@@ -1,503 +1,451 @@
-﻿using FlaUI.Core.WindowsAPI;
+﻿using System;
+using System.Runtime.InteropServices;
+using FlaUI.Core.Input;
+using FlaUI.Core.WindowsAPI;
 
-namespace FlaUI.WebDriver;
-
-internal class Keys
+namespace FlaUI.WebDriver
 {
-    /// <summary>
-    /// Normalized key mapping from https://www.w3.org/TR/webdriver2/#keyboard-actions
-    /// </summary>
-    private static readonly Dictionary<char, string> s_normalizedKeys = new Dictionary<char, string>()
+    internal static class Keys
     {
-        { '\uE000', "Unidentified" },
-        { '\uE001', "Cancel" },
-        { '\uE002', "Help" },
-        { '\uE003', "Backspace" },
-        { '\uE004', "Tab" },
-        { '\uE005', "Clear" },
-        { '\uE006', "Return" },
-        { '\uE007', "Enter" },
-        { '\uE008', "Shift" },
-        { '\uE009', "Control" },
-        { '\uE00A', "Alt" },
-        { '\uE00B', "Pause" },
-        { '\uE00C', "Escape" },
-        { '\uE00D', " " },
-        { '\uE00E', "PageUp" },
-        { '\uE00F', "PageDown" },
-        { '\uE010', "End" },
-        { '\uE011', "Home" },
-        { '\uE012', "ArrowLeft" },
-        { '\uE013', "ArrowUp" },
-        { '\uE014', "ArrowRight" },
-        { '\uE015', "ArrowDown" },
-        { '\uE016', "Insert" },
-        { '\uE017', "Delete" },
-        { '\uE018', ";" },
-        { '\uE019', "=" },
-        { '\uE01A', "0" },
-        { '\uE01B', "1" },
-        { '\uE01C', "2" },
-        { '\uE01D', "3" },
-        { '\uE01E', "4" },
-        { '\uE01F', "5" },
-        { '\uE020', "6" },
-        { '\uE021', "7" },
-        { '\uE022', "8" },
-        { '\uE023', "9" },
-        { '\uE024', "*" },
-        { '\uE025', "+" },
-        { '\uE026', "," },
-        { '\uE027', "-" },
-        { '\uE028', "." },
-        { '\uE029', "/" },
-        { '\uE031', "F1" },
-        { '\uE032', "F2" },
-        { '\uE033', "F3" },
-        { '\uE034', "F4" },
-        { '\uE035', "F5" },
-        { '\uE036', "F6" },
-        { '\uE037', "F7" },
-        { '\uE038', "F8" },
-        { '\uE039', "F9" },
-        { '\uE03A', "F10" },
-        { '\uE03B', "F11" },
-        { '\uE03C', "F12" },
-        { '\uE03D', "Meta" },
-        { '\uE03E', "Command" },
-        { '\uE040', "ZenkakuHankaku" },
-        { '\uE050', "Shift" },
-        { '\uE051', "Control" },
-        { '\uE052', "Alt" },
-        { '\uE053', "Meta" },
-        { '\uE054', "PageUp" },
-        { '\uE055', "PageDown" },
-        { '\uE056', "End" },
-        { '\uE057', "Home" },
-        { '\uE058', "ArrowLeft" },
-        { '\uE059', "ArrowUp" },
-        { '\uE05A', "ArrowRight" },
-        { '\uE05B', "ArrowDown" },
-        { '\uE05C', "Insert" },
-        { '\uE05D', "Delete" },
-    };
+        // Special key constants (WebDriver key representations)
+        public const string Null = "\uE000";
+        public const string Cancel = "\uE001";
+        public const string Help = "\uE002";
+        public const string Backspace = "\uE003";
+        public const string Tab = "\uE004";
+        public const string Clear = "\uE005";
+        public const string Return = "\uE006";
+        public const string Enter = "\uE007";
+        public const string LeftShift = "\uE008";
+        public const string Control = "\uE009";
+        public const string Alt = "\uE00A";
+        public const string Pause = "\uE00B";
+        public const string Escape = "\uE00C";
+        public const string Space = "\uE00D";
+        public const string PageUp = "\uE00E";
+        public const string PageDown = "\uE00F";
+        public const string End = "\uE010";
+        public const string Home = "\uE011";
+        public const string LeftArrow = "\uE012";
+        public const string Left = LeftArrow;
+        public const string UpArrow = "\uE013";
+        public const string RightArrow = "\uE014";
+        public const string DownArrow = "\uE015";
+        public const string Insert = "\uE016";
+        public const string Delete = "\uE017";
+        public const string Meta = "\uE03D";
+        public const string F1 = "\uE031";
+        public const string F2 = "\uE032";
+        public const string F3 = "\uE033";
+        public const string F4 = "\uE034";
+        public const string F5 = "\uE035";
+        public const string F6 = "\uE036";
+        public const string F7 = "\uE037";
+        public const string F8 = "\uE038";
+        public const string F9 = "\uE039";
+        public const string F10 = "\uE03A";
+        public const string F11 = "\uE03B";
+        public const string F12 = "\uE03C";
 
-    private static readonly Dictionary<char, string> s_keyToCode = new()
-    {
-        { '`', "Backquote" },
-        { '\\', "Backslash" },
-        { '\uE003', "Backspace" },
-        { '[', "BracketLeft" },
-        { ']', "BracketRight" },
-        { ',', "Comma" },
-        { '0', "Digit0" },
-        { '1', "Digit1" },
-        { '2', "Digit2" },
-        { '3', "Digit3" },
-        { '4', "Digit4" },
-        { '5', "Digit5" },
-        { '6', "Digit6" },
-        { '7', "Digit7" },
-        { '8', "Digit8" },
-        { '9', "Digit9" },
-        { '=', "Equal" },
-        { 'a', "KeyA" },
-        { 'b', "KeyB" },
-        { 'c', "KeyC" },
-        { 'd', "KeyD" },
-        { 'e', "KeyE" },
-        { 'f', "KeyF" },
-        { 'g', "KeyG" },
-        { 'h', "KeyH" },
-        { 'i', "KeyI" },
-        { 'j', "KeyJ" },
-        { 'k', "KeyK" },
-        { 'l', "KeyL" },
-        { 'm', "KeyM" },
-        { 'n', "KeyN" },
-        { 'o', "KeyO" },
-        { 'p', "KeyP" },
-        { 'q', "KeyQ" },
-        { 'r', "KeyR" },
-        { 's', "KeyS" },
-        { 't', "KeyT" },
-        { 'u', "KeyU" },
-        { 'v', "KeyV" },
-        { 'w', "KeyW" },
-        { 'x', "KeyX" },
-        { 'y', "KeyY" },
-        { 'z', "KeyZ" },
-        { '-', "Minus" },
-        { '.', "Period" },
-        { '\'', "Quote" },
-        { ';', "Semicolon" },
-        { '/', "Slash" },
-        { '\uE00A', "AltLeft" },
-        { '\uE052', "AltRight" },
-        { '\uE009', "ControlLeft" },
-        { '\uE051', "ControlRight" },
-        { '\uE006', "Enter" },
-        { '\uE00B', "Pause" },
-        { '\uE03D', "MetaLeft" },
-        { '\uE053', "MetaRight" },
-        { '\uE008', "ShiftLeft" },
-        { '\uE050', "ShiftRight" },
-        { ' ', "Space" },
-        { '\uE004', "Tab" },
-        { '\uE017', "Delete" },
-        { '\uE010', "End" },
-        { '\uE002', "Help" },
-        { '\uE011', "Home" },
-        { '\uE016', "Insert" },
-        { '\uE00F', "PageDown" },
-        { '\uE00E', "PageUp" },
-        { '\uE015', "ArrowDown" },
-        { '\uE012', "ArrowLeft" },
-        { '\uE014', "ArrowRight" },
-        { '\uE013', "ArrowUp" },
-        { '\uE00C', "Escape" },
-        { '\uE031', "F1" },
-        { '\uE032', "F2" },
-        { '\uE033', "F3" },
-        { '\uE034', "F4" },
-        { '\uE035', "F5" },
-        { '\uE036', "F6" },
-        { '\uE037', "F7" },
-        { '\uE038', "F8" },
-        { '\uE039', "F9" },
-        { '\uE03A', "F10" },
-        { '\uE03B', "F11" },
-        { '\uE03C', "F12" },
-        { '\uE019', "NumpadEqual" },
-        { '\uE01A', "Numpad0" },
-        { '\uE01B', "Numpad1" },
-        { '\uE01C', "Numpad2" },
-        { '\uE01D', "Numpad3" },
-        { '\uE01E', "Numpad4" },
-        { '\uE01F', "Numpad5" },
-        { '\uE020', "Numpad6" },
-        { '\uE021', "Numpad7" },
-        { '\uE022', "Numpad8" },
-        { '\uE023', "Numpad9" },
-        { '\uE025', "NumpadAdd" },
-        { '\uE026', "NumpadComma" },
-        { '\uE028', "NumpadDecimal" },
-        { '\uE029', "NumpadDivide" },
-        { '\uE007', "NumpadEnter" },
-        { '\uE024', "NumpadMultiply" },
-        { '\uE027', "NumpadSubtract" },
-    };
 
-    private static readonly Dictionary<char, string> s_shiftedKeyToCode = new()
-    {
-        { '~', "Backquote" },
-        { '|', "Backslash" },
-        { '{', "BracketLeft" },
-        { '}', "BracketRight" },
-        { '<', "Comma" },
-        { ')', "Digit0" },
-        { '!', "Digit1" },
-        { '@', "Digit2" },
-        { '#', "Digit3" },
-        { '$', "Digit4" },
-        { '%', "Digit5" },
-        { '^', "Digit6" },
-        { '&', "Digit7" },
-        { '*', "Digit8" },
-        { '(', "Digit9" },
-        { '+', "Equal" },
-        { 'A', "KeyA" },
-        { 'B', "KeyB" },
-        { 'C', "KeyC" },
-        { 'D', "KeyD" },
-        { 'E', "KeyE" },
-        { 'F', "KeyF" },
-        { 'G', "KeyG" },
-        { 'H', "KeyH" },
-        { 'I', "KeyI" },
-        { 'J', "KeyJ" },
-        { 'K', "KeyK" },
-        { 'L', "KeyL" },
-        { 'M', "KeyM" },
-        { 'N', "KeyN" },
-        { 'O', "KeyO" },
-        { 'P', "KeyP" },
-        { 'Q', "KeyQ" },
-        { 'R', "KeyR" },
-        { 'S', "KeyS" },
-        { 'T', "KeyT" },
-        { 'U', "KeyU" },
-        { 'V', "KeyV" },
-        { 'W', "KeyW" },
-        { 'X', "KeyX" },
-        { 'Y', "KeyY" },
-        { 'Z', "KeyZ" },
-        { '_', "Minus" },
-        { '>', "Period" },
-        { '"', "Quote" },
-        { ':', "Semicolon" },
-        { '?', "Slash" },
-        { '\uE00D', "Space" },
-        { '\uE05C', "Numpad0" },
-        { '\uE056', "Numpad1" },
-        { '\uE05B', "Numpad2" },
-        { '\uE055', "Numpad3" },
-        { '\uE058', "Numpad4" },
-        { '\uE05A', "Numpad6" },
-        { '\uE057', "Numpad7" },
-        { '\uE059', "Numpad8" },
-        { '\uE054', "Numpad9" },
-        { '\uE05D', "NumpadDecimal" },
-    };
-
-    public const char Null = '\uE000';
-    public const char Cancel = '\uE001';
-    public const char Help = '\uE002';
-    public const char Backspace = '\uE003';
-    public const char Tab = '\uE004';
-    public const char Clear = '\uE005';
-    public const char Return = '\uE006';
-    public const char Enter = '\uE007';
-    public const char Shift = '\uE008';
-    public const char LeftShift = '\uE008';
-    public const char Control = '\uE009';
-    public const char LeftControl = '\uE009';
-    public const char Alt = '\uE00A';
-    public const char LeftAlt = '\uE00A';
-    public const char Pause = '\uE00B';
-    public const char Escape = '\uE00C';
-    public const char Space = '\uE00D';
-    public const char PageUp = '\uE00E';
-    public const char PageDown = '\uE00F';
-    public const char End = '\uE010';
-    public const char Home = '\uE011';
-    public const char Left = '\uE012';
-    public const char ArrowLeft = '\uE012';
-    public const char Up = '\uE013';
-    public const char ArrowUp = '\uE013';
-    public const char Right = '\uE014';
-    public const char ArrowRight = '\uE014';
-    public const char Down = '\uE015';
-    public const char ArrowDown = '\uE015';
-    public const char Insert = '\uE016';
-    public const char Delete = '\uE017';
-    public const char Semicolon = '\uE018';
-    public const char Equal = '\uE019';
-    public const char NumberPad0 = '\uE01A';
-    public const char NumberPad1 = '\uE01B';
-    public const char NumberPad2 = '\uE01C';
-    public const char NumberPad3 = '\uE01D';
-    public const char NumberPad4 = '\uE01E';
-    public const char NumberPad5 = '\uE01F';
-    public const char NumberPad6 = '\uE020';
-    public const char NumberPad7 = '\uE021';
-    public const char NumberPad8 = '\uE022';
-    public const char NumberPad9 = '\uE023';
-    public const char Multiply = '\uE024';
-    public const char Add = '\uE025';
-    public const char Separator = '\uE026';
-    public const char Subtract = '\uE027';
-    public const char Decimal = '\uE028';
-    public const char Divide = '\uE029';
-    public const char F1 = '\uE031';
-    public const char F2 = '\uE032';
-    public const char F3 = '\uE033';
-    public const char F4 = '\uE034';
-    public const char F5 = '\uE035';
-    public const char F6 = '\uE036';
-    public const char F7 = '\uE037';
-    public const char F8 = '\uE038';
-    public const char F9 = '\uE039';
-    public const char F10 = '\uE03A';
-    public const char F11 = '\uE03B';
-    public const char F12 = '\uE03C';
-    public const char Meta = '\uE03D';
-    public const char Command = '\uE03D';
-    public const char ZenkakuHankaku = '\uE040';
-
-    /// <summary>
-    /// Gets a value indicating whether a key attribute value represents a modifier key.
-    /// </summary>
-    /// <param name="key">The key attribute value.</param>
-    /// <remarks>
-    /// Defined in https://www.w3.org/TR/uievents-key/#keys-modifier
-    /// </remarks>
-    public static bool IsModifier(string key)
-    {
-        return key is "Alt" or "AltGraph" or "CapsLock" or "Control" or "Fn" or "FnLock" or
-            "Meta" or "NumLock" or "ScrollLock" or "Shift" or "Symbol" or "SymbolLock";
-    }
-
-    /// <summary>
-    /// Gets a value indicating whether a character is shifted.
-    /// </summary>
-    /// <param name="c">The character.</param>
-    /// <remarks>
-    /// Defined in https://www.w3.org/TR/webdriver2/#keyboard-actions
-    /// </remarks>
-    internal static bool IsShiftedChar(char c) => s_shiftedKeyToCode.ContainsKey(c);
-
-    /// <summary>
-    /// Gets a value indicating whether a graphene cluster is typeable.
-    /// </summary>
-    /// <param name="c">The graphene cluster</param>
-    /// <remarks>
-    /// Defined in https://www.w3.org/TR/webdriver2/#element-send-keys
-    /// </remarks>
-    public static bool IsTypeable(string c)
-    {
-        return c.Length == 1 && (s_keyToCode.ContainsKey(c[0]) || s_shiftedKeyToCode.ContainsKey(c[0]));
-    }
-
-    /// <summary>
-    /// Gets the code for a raw key.
-    /// </summary>
-    /// <param name="key">The raw key.</param>
-    /// <remarks>
-    /// Defined in https://www.w3.org/TR/webdriver2/#keyboard-actions
-    /// </remarks>
-    public static string? GetCode(string key)
-    {
-        if (key.Length == 1)
+        /// <summary>
+        /// Normalizes a key value (from WebDriver actions) to the canonical single-character representation.
+        /// For example, "Control" (or "ctrl") becomes the constant Keys.Control (i.e. "\uE009"), "Enter" becomes Keys.Enter, etc.
+        /// If the input is already a single character, it is returned as-is.
+        /// </summary>
+        public static string GetNormalizedKeyValue(string keyValue)
         {
-            var c = key[0];
-
-            if (s_keyToCode.TryGetValue(c, out var code))
+            if (string.IsNullOrEmpty(keyValue))
             {
-                return code;
+                return keyValue;
             }
-            else if (s_shiftedKeyToCode.TryGetValue(c, out code))
+            if (keyValue.Length == 1)
             {
-                return code;
+                return keyValue;
+            }
+            string name = keyValue.Trim();
+            string lowerName = name.ToLowerInvariant();
+            switch (lowerName)
+            {
+                case "null":
+                    return Null;
+                case "shift":
+                case "leftshift":
+                    return LeftShift;
+                case "control":
+                case "ctrl":
+                case "leftcontrol":
+                    return Control;
+                case "alt":
+                case "leftalt":
+                    return Alt;
+                case "meta":
+                case "command":
+                case "win":
+                case "windows":
+                    return Meta;
+                case "enter":
+                case "return":
+                    return Enter;
+                case "backspace":
+                case "back":
+                    return Backspace;
+                case "tab":
+                    return Tab;
+                case "clear":
+                    return Clear;
+                case "pause":
+                    return Pause;
+                case "escape":
+                case "esc":
+                    return Escape;
+                case "space":
+                case "spacebar":
+                    return Space;
+                case "pageup":
+                    return PageUp;
+                case "pagedown":
+                    return PageDown;
+                case "end":
+                    return End;
+                case "home":
+                    return Home;
+                case "leftarrow":
+                case "left":
+                    return LeftArrow;
+                case "uparrow":
+                case "up":
+                    return UpArrow;
+                case "rightarrow":
+                case "right":
+                    return RightArrow;
+                case "downarrow":
+                case "down":
+                    return DownArrow;
+                case "insert":
+                    return Insert;
+                case "delete":
+                    return Delete;
+                case "help":
+                    return Help;
+                case "cancel":
+                    return Cancel;
+                default:
+                    if (lowerName.StartsWith("key_") && lowerName.Length == 5)
+                    {
+                        var remainder = keyValue.Substring(4);
+                        // Only strip the prefix if the character is a letter or digit.
+                        if (char.IsLetterOrDigit(remainder[0]))
+                        {
+                            return remainder;
+                        }
+                    }
+                    return keyValue;
             }
         }
 
-        return null;
-    }
 
-    /// <summary>
-    /// Gets a normalized key value.
-    /// </summary>
-    /// <param name="key">The raw key.</param>
-    /// <remarks>
-    /// Defined in https://www.w3.org/TR/webdriver2/#keyboard-actions
-    /// </remarks>
-    public static string GetNormalizedKeyValue(string key)
-    {
-        return key.Length == 1 && s_normalizedKeys.TryGetValue(key[0], out var value) ? value : key;
-    }
+        /// <summary>
+        /// Gets the VirtualKeyShort code for a given key value string (after normalization).
+        /// Throws an exception if the key cannot be mapped to a virtual key (e.g., Keys.Null or unmappable Unicode characters).
+        /// The returned VirtualKeyShort can be used with Keyboard.Press and Keyboard.Release.
+        /// </summary>
+        // public static VirtualKeyShort GetCode(string keyValue)
+        // {
+        //     if (string.IsNullOrEmpty(keyValue))
+        //     {
+        //         throw new ArgumentException("Key value cannot be null or empty.", nameof(keyValue));
+        //     }
+        //     string normKey = GetNormalizedKeyValue(keyValue);
+        //     if (string.IsNullOrEmpty(normKey))
+        //     {
+        //         throw new ArgumentException($"Invalid key value: \"{keyValue}\"", nameof(keyValue));
+        //     }
+        //     // Null key does not correspond to a physical key code
+        //     if (normKey == Null)
+        //     {
+        //         throw new InvalidOperationException("Keys.Null does not correspond to a physical key code.");
+        //     }
+        //     if (normKey.Length != 1)
+        //     {
+        //         // After normalization, we expect a single character; otherwise, it's invalid
+        //         throw new ArgumentException($"Invalid key value: \"{keyValue}\"", nameof(keyValue));
+        //     }
+        //     char keyChar = normKey[0];
+        //     // Handle special key Unicode values explicitly
+        //     switch (keyChar)
+        //     {
+        //         case '\uE001': // Cancel (Break)
+        //             return VirtualKeyShort.CANCEL;
+        //         case '\uE002': // Help
+        //             // Map to VK_HELP (0x2F)
+        //             return (VirtualKeyShort)0x2F;
+        //         case '\uE003': // Backspace
+        //             return VirtualKeyShort.BACK;
+        //         case '\uE004': // Tab
+        //             return VirtualKeyShort.TAB;
+        //         case '\uE005': // Clear (NumPad 5 when NumLock off)
+        //             return VirtualKeyShort.CLEAR;
+        //         case '\uE006': // Return
+        //         case '\uE007': // Enter
+        //             return VirtualKeyShort.RETURN;
+        //         case '\uE008': // Shift (use left shift)
+        //             return VirtualKeyShort.LSHIFT;
+        //         case '\uE009': // Control (use left control)
+        //             return VirtualKeyShort.LCONTROL;
+        //         case '\uE00A': // Alt (use left alt)
+        //             return VirtualKeyShort.LMENU;
+        //         case '\uE00B': // Pause
+        //             return VirtualKeyShort.PAUSE;
+        //         case '\uE00C': // Escape
+        //             return VirtualKeyShort.ESCAPE;
+        //         case '\uE00D': // Space
+        //             return VirtualKeyShort.SPACE;
+        //         case '\uE00E': // Page Up
+        //             return VirtualKeyShort.PRIOR;
+        //         case '\uE00F': // Page Down
+        //             return VirtualKeyShort.NEXT;
+        //         case '\uE010': // End
+        //             return VirtualKeyShort.END;
+        //         case '\uE011': // Home
+        //             return VirtualKeyShort.HOME;
+        //         case '\uE012': // Left Arrow
+        //             return VirtualKeyShort.LEFT;
+        //         case '\uE013': // Up Arrow
+        //             return VirtualKeyShort.UP;
+        //         case '\uE014': // Right Arrow
+        //             return VirtualKeyShort.RIGHT;
+        //         case '\uE015': // Down Arrow
+        //             return VirtualKeyShort.DOWN;
+        //         case '\uE016': // Insert
+        //             return VirtualKeyShort.INSERT;
+        //         case '\uE017': // Delete
+        //             return VirtualKeyShort.DELETE;
+        //         case '\uE03D': // Meta (Windows/Command key)
+        //             return VirtualKeyShort.LWIN;
+        //         default:
+        //             // For normal character keys, use VkKeyScan to get the virtual-key code
+        //             short vkScan = User32.VkKeyScan(keyChar);
+        //             if (vkScan == -1)
+        //             {
+        //                 // Character is not supported by the current keyboard layout
+        //                 throw new InvalidOperationException($"No virtual key code found for character '{keyChar}' in the current keyboard layout.");
+        //             }
+        //             // The low-order byte is the virtual-key code
+        //             byte vkCode = (byte)(vkScan & 0xFF);
+        //             return (VirtualKeyShort)vkCode;
+        //     }
+        // }
 
-    /// <summary>
-    /// Gets the win32 virtual key code for a key code returned by <see cref="GetCode(string)"/>.
-    /// </summary>
-    public static VirtualKeyShort GetVirtualKey(string? code)
-    {
-        return code switch
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern short VkKeyScanEx(char ch, IntPtr dwhkl);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr GetKeyboardLayout(uint idThread);
+
+        /// <summary>
+        /// Gets the corresponding VirtualKeyShort for a given key code.
+        /// This function handles both WebDriver special keys (e.g., Keys.Enter, Keys.Tab, Keys.F1, etc.)
+        /// and normal character keys.
+        /// </summary>
+        public static VirtualKeyShort GetVirtualKey(string code)
         {
-            "Backquote" => VirtualKeyShort.OEM_3,
-            "Backslash" => VirtualKeyShort.OEM_5,
-            "Backspace" => VirtualKeyShort.BACK,
-            "BracketLeft" => VirtualKeyShort.OEM_4,
-            "BracketRight" => VirtualKeyShort.OEM_6,
-            "Comma" => VirtualKeyShort.OEM_COMMA,
-            "Digit0" => VirtualKeyShort.KEY_0,
-            "Digit1" => VirtualKeyShort.KEY_1,
-            "Digit2" => VirtualKeyShort.KEY_2,
-            "Digit3" => VirtualKeyShort.KEY_3,
-            "Digit4" => VirtualKeyShort.KEY_4,
-            "Digit5" => VirtualKeyShort.KEY_5,
-            "Digit6" => VirtualKeyShort.KEY_6,
-            "Digit7" => VirtualKeyShort.KEY_7,
-            "Digit8" => VirtualKeyShort.KEY_8,
-            "Digit9" => VirtualKeyShort.KEY_9,
-            "Equal" => VirtualKeyShort.OEM_PLUS,
-            "IntlBackslash" => VirtualKeyShort.OEM_102,
-            "KeyA" => VirtualKeyShort.KEY_A,
-            "KeyB" => VirtualKeyShort.KEY_B,
-            "KeyC" => VirtualKeyShort.KEY_C,
-            "KeyD" => VirtualKeyShort.KEY_D,
-            "KeyE" => VirtualKeyShort.KEY_E,
-            "KeyF" => VirtualKeyShort.KEY_F,
-            "KeyG" => VirtualKeyShort.KEY_G,
-            "KeyH" => VirtualKeyShort.KEY_H,
-            "KeyI" => VirtualKeyShort.KEY_I,
-            "KeyJ" => VirtualKeyShort.KEY_J,
-            "KeyK" => VirtualKeyShort.KEY_K,
-            "KeyL" => VirtualKeyShort.KEY_L,
-            "KeyM" => VirtualKeyShort.KEY_M,
-            "KeyN" => VirtualKeyShort.KEY_N,
-            "KeyO" => VirtualKeyShort.KEY_O,
-            "KeyP" => VirtualKeyShort.KEY_P,
-            "KeyQ" => VirtualKeyShort.KEY_Q,
-            "KeyR" => VirtualKeyShort.KEY_R,
-            "KeyS" => VirtualKeyShort.KEY_S,
-            "KeyT" => VirtualKeyShort.KEY_T,    
-            "KeyU" => VirtualKeyShort.KEY_U,
-            "KeyV" => VirtualKeyShort.KEY_V,
-            "KeyW" => VirtualKeyShort.KEY_W,
-            "KeyX" => VirtualKeyShort.KEY_X,
-            "KeyY" => VirtualKeyShort.KEY_Y,
-            "KeyZ" => VirtualKeyShort.KEY_Z,    
-            "Minus" => VirtualKeyShort.OEM_MINUS,
-            "Period" => VirtualKeyShort.OEM_PERIOD,
-            "Quote" => VirtualKeyShort.OEM_7,
-            "Semicolon" => VirtualKeyShort.OEM_1,
-            "Slash" => VirtualKeyShort.OEM_2,
-            "AltLeft" => VirtualKeyShort.ALT,
-            "AltRight" => VirtualKeyShort.ALT,
-            "ControlLeft" => VirtualKeyShort.CONTROL,
-            "ControlRight" => VirtualKeyShort.CONTROL,
-            "Enter" => VirtualKeyShort.ENTER,
-            "Pause" => VirtualKeyShort.PAUSE,
-            "MetaLeft" => VirtualKeyShort.LWIN,
-            "MetaRight" => VirtualKeyShort.RWIN,
-            "ShiftLeft" => VirtualKeyShort.LSHIFT,
-            "ShiftRight" => VirtualKeyShort.RSHIFT,
-            "Space" => VirtualKeyShort.SPACE,
-            "Tab" => VirtualKeyShort.TAB,
-            "Delete" => VirtualKeyShort.DELETE,
-            "End" => VirtualKeyShort.END,
-            "Help" => VirtualKeyShort.HELP,
-            "Home" => VirtualKeyShort.HOME,
-            "Insert" => VirtualKeyShort.INSERT,
-            "PageDown" => VirtualKeyShort.NEXT,
-            "PageUp" => VirtualKeyShort.PRIOR,
-            "ArrowDown" => VirtualKeyShort.DOWN,
-            "ArrowLeft" => VirtualKeyShort.LEFT,
-            "ArrowRight" => VirtualKeyShort.RIGHT,
-            "ArrowUp" => VirtualKeyShort.UP,
-            "Escape" => VirtualKeyShort.ESCAPE,
-            "F1" => VirtualKeyShort.F1,
-            "F2" => VirtualKeyShort.F2,
-            "F3" => VirtualKeyShort.F3,
-            "F4" => VirtualKeyShort.F4,
-            "F5" => VirtualKeyShort.F5,
-            "F6" => VirtualKeyShort.F6,
-            "F7" => VirtualKeyShort.F7,
-            "F8" => VirtualKeyShort.F8,
-            "F9" => VirtualKeyShort.F9,
-            "F10" => VirtualKeyShort.F10,
-            "F11" => VirtualKeyShort.F11,
-            "F12" => VirtualKeyShort.F12,
-            "NumpadEqual" => VirtualKeyShort.SEPARATOR,
-            "Numpad0" => VirtualKeyShort.NUMPAD0,
-            "Numpad1" => VirtualKeyShort.NUMPAD1,
-            "Numpad2" => VirtualKeyShort.NUMPAD2,
-            "Numpad3" => VirtualKeyShort.NUMPAD3,
-            "Numpad4" => VirtualKeyShort.NUMPAD4,
-            "Numpad5" => VirtualKeyShort.NUMPAD5,
-            "Numpad6" => VirtualKeyShort.NUMPAD6,
-            "Numpad7" => VirtualKeyShort.NUMPAD7,
-            "Numpad8" => VirtualKeyShort.NUMPAD8,
-            "Numpad9" => VirtualKeyShort.NUMPAD9,
-            "NumpadAdd" => VirtualKeyShort.ADD,
-            "NumpadComma" => VirtualKeyShort.OEM_COMMA,
-            "NumpadDecimal" => VirtualKeyShort.DECIMAL,
-            "NumpadDivide" => VirtualKeyShort.DIVIDE,
-            "NumpadEnter" => VirtualKeyShort.ENTER,
-            "NumpadMultiply" => VirtualKeyShort.MULTIPLY,
-            "NumpadSubtract" => VirtualKeyShort.SUBTRACT,
-            _ => throw WebDriverResponseException.UnsupportedOperation($"Key '{code}' is not supported"),
-        };
+            if (string.IsNullOrEmpty(code))
+            {
+                throw new ArgumentException("Key code cannot be null or empty.", nameof(code));
+            }
+            // First, normalize the code so that names like "Control" become "\uE009"
+            string normalized = GetNormalizedKeyValue(code);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                throw new ArgumentException("Normalized key code is null or empty.", nameof(code));
+            }
+            // Ensure that the normalized code represents a single key or a valid surrogate pair.
+            if (normalized.Length > 1 && !char.IsSurrogatePair(normalized, 0))
+            {
+                throw new ArgumentException("Key code must be a single key or key cluster.", nameof(code));
+            }
+            int codePoint = (normalized.Length == 1) ? normalized[0] : char.ConvertToUtf32(normalized, 0);
+
+            // Handle WebDriver special keys in the Unicode PUA range (U+E000 to U+E03D)
+            if (codePoint >= 0xE000 && codePoint <= 0xE03D)
+            {
+                switch (codePoint)
+                {
+                    case 0xE000: // Null key: no physical key
+                        return (VirtualKeyShort)0;
+                    case 0xE001: return VirtualKeyShort.CANCEL;
+                    case 0xE002: return VirtualKeyShort.HELP;
+                    case 0xE003: return VirtualKeyShort.BACK;
+                    case 0xE004: return VirtualKeyShort.TAB;
+                    case 0xE005: return VirtualKeyShort.CLEAR;
+                    case 0xE006: // Return
+                    case 0xE007: // Enter
+                        return VirtualKeyShort.RETURN;
+                    case 0xE008: // Shift (use left shift)
+                        return VirtualKeyShort.SHIFT;
+                    case 0xE009: // Control (use left control)
+                        return VirtualKeyShort.CONTROL;
+                    case 0xE00A: // Alt (use left alt)
+                        return VirtualKeyShort.ALT;
+                    case 0xE00B: return VirtualKeyShort.PAUSE;
+                    case 0xE00C: return VirtualKeyShort.ESCAPE;
+                    case 0xE00D: return VirtualKeyShort.SPACE;
+                    case 0xE00E: return VirtualKeyShort.PRIOR;
+                    case 0xE00F: return VirtualKeyShort.NEXT;
+                    case 0xE010: return VirtualKeyShort.END;
+                    case 0xE011: return VirtualKeyShort.HOME;
+                    case 0xE012: return VirtualKeyShort.LEFT;
+                    case 0xE013: return VirtualKeyShort.UP;
+                    case 0xE014: return VirtualKeyShort.RIGHT;
+                    case 0xE015: return VirtualKeyShort.DOWN;
+                    case 0xE016: return VirtualKeyShort.INSERT;
+                    case 0xE017: return VirtualKeyShort.DELETE;
+                    // Handle function keys F1-F12
+                    case 0xE031: return VirtualKeyShort.F1;
+                    case 0xE032: return VirtualKeyShort.F2;
+                    case 0xE033: return VirtualKeyShort.F3;
+                    case 0xE034: return VirtualKeyShort.F4;
+                    case 0xE035: return VirtualKeyShort.F5;
+                    case 0xE036: return VirtualKeyShort.F6;
+                    case 0xE037: return VirtualKeyShort.F7;
+                    case 0xE038: return VirtualKeyShort.F8;
+                    case 0xE039: return VirtualKeyShort.F9;
+                    case 0xE03A: return VirtualKeyShort.F10;
+                    case 0xE03B: return VirtualKeyShort.F11;
+                    case 0xE03C: return VirtualKeyShort.F12;
+                    case 0xE03D: return VirtualKeyShort.LWIN;
+                }
+            }
+
+            // For normal characters, use Windows API to map to a virtual key.
+            if (codePoint > 0xFFFF)
+            {
+                // Characters outside the BMP (e.g. emoji) are not typeable via a single key.
+                return VirtualKeyShort.PACKET;
+            }
+            char character = (char)codePoint;
+            IntPtr layout = GetKeyboardLayout(0);
+            short result = VkKeyScanEx(character, layout);
+            if (result == -1)
+            {
+                return VirtualKeyShort.PACKET;
+            }
+            byte vkCode = (byte)(result & 0xFF);
+            return (VirtualKeyShort)vkCode;
+        }
+
+
+        /// <summary>
+        /// Checks whether the provided key cluster (string) is directly typeable using the current keyboard layout.
+        /// Returns true if every character in the cluster can be produced by a standard keystroke (with any needed modifiers).
+        /// </summary>
+        public static bool IsTypeable(string cluster)
+        {
+            if (string.IsNullOrEmpty(cluster))
+            {
+                return false;
+            }
+
+            // Use the keyboard layout for possible API lookups.
+            IntPtr layout = GetKeyboardLayout(0);
+            // Iterate through each code point (handling surrogate pairs)
+            for (int i = 0; i < cluster.Length; i++)
+            {
+                int codePoint;
+                if (i < cluster.Length - 1 && char.IsSurrogatePair(cluster, i))
+                {
+                    codePoint = char.ConvertToUtf32(cluster, i);
+                    i++; // advance past the surrogate pair
+                }
+                else
+                {
+                    codePoint = cluster[i];
+                }
+
+                // Skip the WebDriver "Null" key.
+                if (codePoint == 0xE000)
+                {
+                    continue;
+                }
+
+                // If it is one of the special WebDriver keys, consider it typeable.
+                if (codePoint >= 0xE001 && codePoint <= 0xE03D)
+                {
+                    continue;
+                }
+
+                // Characters outside the BMP (such as many emoji) are not produced by a single keystroke.
+                if (codePoint > 0xFFFF)
+                {
+                    return false;
+                }
+
+                // For normal characters, check their Unicode category.
+                char ch = (char)codePoint;
+                var category = char.GetUnicodeCategory(ch);
+
+                // Accept as typeable if the character is any kind of letter, digit, punctuation or symbol.
+                if (category == System.Globalization.UnicodeCategory.UppercaseLetter ||
+                    category == System.Globalization.UnicodeCategory.LowercaseLetter ||
+                    category == System.Globalization.UnicodeCategory.TitlecaseLetter ||
+                    category == System.Globalization.UnicodeCategory.DecimalDigitNumber ||
+                    category == System.Globalization.UnicodeCategory.CurrencySymbol ||
+                    category == System.Globalization.UnicodeCategory.MathSymbol ||
+                    category == System.Globalization.UnicodeCategory.OtherPunctuation ||
+                    category == System.Globalization.UnicodeCategory.DashPunctuation ||
+                    category == System.Globalization.UnicodeCategory.OpenPunctuation ||
+                    category == System.Globalization.UnicodeCategory.ClosePunctuation ||
+                    category == System.Globalization.UnicodeCategory.InitialQuotePunctuation ||
+                    category == System.Globalization.UnicodeCategory.FinalQuotePunctuation ||
+                    category == System.Globalization.UnicodeCategory.OtherSymbol)
+                {
+                    // We consider these categories as typeable.
+                    continue;
+                }
+                else
+                {
+                    // As a last resort, try mapping with VkKeyScanEx.
+                    short vkMapping = VkKeyScanEx(ch, layout);
+                    if (vkMapping == -1)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Determines if the given key value represents a modifier key (Shift, Control, Alt, or Meta).
+        /// </summary>
+        public static bool IsModifier(string keyValue)
+        {
+            if (string.IsNullOrEmpty(keyValue))
+                return false;
+            string normKey = GetNormalizedKeyValue(keyValue);
+            return (normKey == LeftShift || normKey == Control || normKey == Alt || normKey == Meta);
+        }
+        
+        /// <summary>
+        /// Determines whether a character requires a shifted key press (e.g., uppercase or symbol requiring Shift)
+        /// </summary>
+        public static bool IsShiftedChar(char key)
+        {
+            short scan = VkKeyScanEx(key, GetKeyboardLayout(0));
+            if (scan == -1)
+                return false;
+            byte shiftState = (byte)((scan >> 8) & 0xFF);
+            return (shiftState & 0x01) != 0;
+        }
+
+        /// <summary>
+        /// Gets the virtual key code for a given key value.
+        /// This is similar to GetVirtualKey but provided as an alias.
+        /// </summary>
+        public static VirtualKeyShort GetCode(string keyValue)
+        {
+            return GetVirtualKey(keyValue);
+        }
     }
 }

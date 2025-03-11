@@ -1,9 +1,27 @@
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 using FlaUI.WebDriver;
 using FlaUI.WebDriver.Services;
 using Microsoft.OpenApi.Models;
+using Serilog;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Serilog
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs/webdriver-.log"),
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
+
+builder.Services.AddSingleton<KeyboardLayoutManager>();
 builder.Services.AddSingleton<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<IActionsDispatcher, ActionsDispatcher>();
 builder.Services.AddScoped<IWindowsExtensionService, WindowsExtensionService>();

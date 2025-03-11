@@ -15,12 +15,15 @@ namespace FlaUI.WebDriver.UITests
         public void Setup()
         {
             var driverOptions = FlaUIDriverOptions.TestApp();
-            _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions);
+            var commandTimeout = System.TimeSpan.FromSeconds(6);
+            _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions.ToCapabilities(), commandTimeout);
         }
 
         [TearDown]
         public void Teardown()
         {
+            KeyboardHelper.ResetKeyboardState();
+            _driver?.ResetInputState();
             _driver?.Dispose();
         }
 
@@ -48,6 +51,39 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
+        public void SendKeys_Default2_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            element.SendKeys("aBC123");
+
+            Assert.That(element.Text, Is.EqualTo("aBC123"));
+        }
+
+        [Test]
+        public void SendKeys_Default3_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            element.SendKeys("aAbBcCeE");
+
+            Assert.That(element.Text, Is.EqualTo("aAbBcCeE"));
+        }
+
+        [Test]
+        public void SendKeys_Default4_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            element.SendKeys("a1Bc3A1D2G");
+
+            Assert.That(element.Text, Is.EqualTo("a1Bc3A1D2G"));
+        }
+
+        [Test]
         public void SendKeys_ShiftedCharacter_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
@@ -56,6 +92,30 @@ namespace FlaUI.WebDriver.UITests
             element.SendKeys("@TEST");
 
             Assert.That(element.Text, Is.EqualTo("@TEST"));
+        }
+
+        [Test]
+        public void SendKeys_Special_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            string withSpecialCharacters = "A1%3ee5&";
+            element.SendKeys(withSpecialCharacters);
+
+            Assert.That(element.Text, Is.EqualTo(withSpecialCharacters));
+        }
+
+        [Test]
+        public void SendKeys_SpecialCharacters_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            string withSpecialCharacters = "#a1!b2%c3&d4*e5(f6)g7";
+            element.SendKeys(withSpecialCharacters);
+
+            Assert.That(element.Text, Is.EqualTo(withSpecialCharacters));
         }
 
         [Test]
