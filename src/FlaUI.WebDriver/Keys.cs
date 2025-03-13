@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 
@@ -47,12 +50,104 @@ namespace FlaUI.WebDriver
         public const string F11 = "\uE03B";
         public const string F12 = "\uE03C";
 
+        // Cache for computed virtual key codes.
+        private static ConcurrentDictionary<string, VirtualKeyShort> _keyCache = new ConcurrentDictionary<string, VirtualKeyShort>();
 
-        /// <summary>
-        /// Normalizes a key value (from WebDriver actions) to the canonical single-character representation.
-        /// For example, "Control" (or "ctrl") becomes the constant Keys.Control (i.e. "\uE009"), "Enter" becomes Keys.Enter, etc.
-        /// If the input is already a single character, it is returned as-is.
-        /// </summary>
+        public static VirtualKeyShort GetVirtualKey(string code)
+        {
+            if (string.IsNullOrEmpty(code))
+            {
+                throw new ArgumentException("Key code cannot be null or empty.", nameof(code));
+            }
+
+            string normalized = GetNormalizedKeyValue(code);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                throw new ArgumentException("Normalized key code is null or empty.", nameof(code));
+            }
+
+            if (_keyCache.TryGetValue(normalized, out VirtualKeyShort cachedValue))
+            {
+                return cachedValue;
+            }
+
+            VirtualKeyShort vk;
+            int codePoint = (normalized.Length == 1) ? normalized[0] : char.ConvertToUtf32(normalized, 0);
+            if (codePoint >= 0xE000 && codePoint <= 0xE03D)
+            {
+                switch (codePoint)
+                {
+                    case 0xE000:
+                        vk = (VirtualKeyShort)0;
+                        break;
+                    case 0xE001: vk = VirtualKeyShort.CANCEL; break;
+                    case 0xE002: vk = VirtualKeyShort.HELP; break;
+                    case 0xE003: vk = VirtualKeyShort.BACK; break;
+                    case 0xE004: vk = VirtualKeyShort.TAB; break;
+                    case 0xE005: vk = VirtualKeyShort.CLEAR; break;
+                    case 0xE006:
+                    case 0xE007: vk = VirtualKeyShort.RETURN; break;
+                    case 0xE008: vk = VirtualKeyShort.SHIFT; break;
+                    case 0xE009: vk = VirtualKeyShort.CONTROL; break;
+                    case 0xE00A: vk = VirtualKeyShort.ALT; break;
+                    case 0xE00B: vk = VirtualKeyShort.PAUSE; break;
+                    case 0xE00C: vk = VirtualKeyShort.ESCAPE; break;
+                    case 0xE00D: vk = VirtualKeyShort.SPACE; break;
+                    case 0xE00E: vk = VirtualKeyShort.PRIOR; break;
+                    case 0xE00F: vk = VirtualKeyShort.NEXT; break;
+                    case 0xE010: vk = VirtualKeyShort.END; break;
+                    case 0xE011: vk = VirtualKeyShort.HOME; break;
+                    case 0xE012: vk = VirtualKeyShort.LEFT; break;
+                    case 0xE013: vk = VirtualKeyShort.UP; break;
+                    case 0xE014: vk = VirtualKeyShort.RIGHT; break;
+                    case 0xE015: vk = VirtualKeyShort.DOWN; break;
+                    case 0xE016: vk = VirtualKeyShort.INSERT; break;
+                    case 0xE017: vk = VirtualKeyShort.DELETE; break;
+                    case 0xE031: vk = VirtualKeyShort.F1; break;
+                    case 0xE032: vk = VirtualKeyShort.F2; break;
+                    case 0xE033: vk = VirtualKeyShort.F3; break;
+                    case 0xE034: vk = VirtualKeyShort.F4; break;
+                    case 0xE035: vk = VirtualKeyShort.F5; break;
+                    case 0xE036: vk = VirtualKeyShort.F6; break;
+                    case 0xE037: vk = VirtualKeyShort.F7; break;
+                    case 0xE038: vk = VirtualKeyShort.F8; break;
+                    case 0xE039: vk = VirtualKeyShort.F9; break;
+                    case 0xE03A: vk = VirtualKeyShort.F10; break;
+                    case 0xE03B: vk = VirtualKeyShort.F11; break;
+                    case 0xE03C: vk = VirtualKeyShort.F12; break;
+                    case 0xE03D: vk = VirtualKeyShort.LWIN; break;
+                    default:
+                        vk = VirtualKeyShort.PACKET;
+                        break;
+                }
+            }
+            else
+            {
+                if (codePoint > 0xFFFF)
+                {
+                    vk = VirtualKeyShort.PACKET;
+                }
+                else
+                {
+                    char character = (char)codePoint;
+                    IntPtr layout = GetKeyboardLayout(0);
+                    short result = VkKeyScanEx(character, layout);
+                    if (result == -1)
+                    {
+                        vk = VirtualKeyShort.PACKET;
+                    }
+                    else
+                    {
+                        byte vkCode = (byte)(result & 0xFF);
+                        vk = (VirtualKeyShort)vkCode;
+                    }
+                }
+            }
+
+            _keyCache[normalized] = vk;
+            return vk;
+        }
+
         public static string GetNormalizedKeyValue(string keyValue)
         {
             if (string.IsNullOrEmpty(keyValue))
@@ -67,74 +162,49 @@ namespace FlaUI.WebDriver
             string lowerName = name.ToLowerInvariant();
             switch (lowerName)
             {
-                case "null":
-                    return Null;
+                case "null": return Null;
                 case "shift":
-                case "leftshift":
-                    return LeftShift;
+                case "leftshift": return LeftShift;
                 case "control":
                 case "ctrl":
-                case "leftcontrol":
-                    return Control;
+                case "leftcontrol": return Control;
                 case "alt":
-                case "leftalt":
-                    return Alt;
+                case "leftalt": return Alt;
                 case "meta":
                 case "command":
                 case "win":
-                case "windows":
-                    return Meta;
+                case "windows": return Meta;
                 case "enter":
-                case "return":
-                    return Enter;
+                case "return": return Enter;
                 case "backspace":
-                case "back":
-                    return Backspace;
-                case "tab":
-                    return Tab;
-                case "clear":
-                    return Clear;
-                case "pause":
-                    return Pause;
+                case "back": return Backspace;
+                case "tab": return Tab;
+                case "clear": return Clear;
+                case "pause": return Pause;
                 case "escape":
-                case "esc":
-                    return Escape;
+                case "esc": return Escape;
                 case "space":
-                case "spacebar":
-                    return Space;
-                case "pageup":
-                    return PageUp;
-                case "pagedown":
-                    return PageDown;
-                case "end":
-                    return End;
-                case "home":
-                    return Home;
+                case "spacebar": return Space;
+                case "pageup": return PageUp;
+                case "pagedown": return PageDown;
+                case "end": return End;
+                case "home": return Home;
                 case "leftarrow":
-                case "left":
-                    return LeftArrow;
+                case "left": return LeftArrow;
                 case "uparrow":
-                case "up":
-                    return UpArrow;
+                case "up": return UpArrow;
                 case "rightarrow":
-                case "right":
-                    return RightArrow;
+                case "right": return RightArrow;
                 case "downarrow":
-                case "down":
-                    return DownArrow;
-                case "insert":
-                    return Insert;
-                case "delete":
-                    return Delete;
-                case "help":
-                    return Help;
-                case "cancel":
-                    return Cancel;
+                case "down": return DownArrow;
+                case "insert": return Insert;
+                case "delete": return Delete;
+                case "help": return Help;
+                case "cancel": return Cancel;
                 default:
                     if (lowerName.StartsWith("key_") && lowerName.Length == 5)
                     {
                         var remainder = keyValue.Substring(4);
-                        // Only strip the prefix if the character is a letter or digit.
                         if (char.IsLetterOrDigit(remainder[0]))
                         {
                             return remainder;
@@ -144,201 +214,79 @@ namespace FlaUI.WebDriver
             }
         }
 
-
         /// <summary>
-        /// Gets the VirtualKeyShort code for a given key value string (after normalization).
-        /// Throws an exception if the key cannot be mapped to a virtual key (e.g., Keys.Null or unmappable Unicode characters).
-        /// The returned VirtualKeyShort can be used with Keyboard.Press and Keyboard.Release.
+        /// Returns the full result from VkKeyScanEx for the given character.
+        /// The result includes modifier information (in the high-order byte) indicating if Shift, Control, or Alt are needed.
         /// </summary>
-        // public static VirtualKeyShort GetCode(string keyValue)
-        // {
-        //     if (string.IsNullOrEmpty(keyValue))
-        //     {
-        //         throw new ArgumentException("Key value cannot be null or empty.", nameof(keyValue));
-        //     }
-        //     string normKey = GetNormalizedKeyValue(keyValue);
-        //     if (string.IsNullOrEmpty(normKey))
-        //     {
-        //         throw new ArgumentException($"Invalid key value: \"{keyValue}\"", nameof(keyValue));
-        //     }
-        //     // Null key does not correspond to a physical key code
-        //     if (normKey == Null)
-        //     {
-        //         throw new InvalidOperationException("Keys.Null does not correspond to a physical key code.");
-        //     }
-        //     if (normKey.Length != 1)
-        //     {
-        //         // After normalization, we expect a single character; otherwise, it's invalid
-        //         throw new ArgumentException($"Invalid key value: \"{keyValue}\"", nameof(keyValue));
-        //     }
-        //     char keyChar = normKey[0];
-        //     // Handle special key Unicode values explicitly
-        //     switch (keyChar)
-        //     {
-        //         case '\uE001': // Cancel (Break)
-        //             return VirtualKeyShort.CANCEL;
-        //         case '\uE002': // Help
-        //             // Map to VK_HELP (0x2F)
-        //             return (VirtualKeyShort)0x2F;
-        //         case '\uE003': // Backspace
-        //             return VirtualKeyShort.BACK;
-        //         case '\uE004': // Tab
-        //             return VirtualKeyShort.TAB;
-        //         case '\uE005': // Clear (NumPad 5 when NumLock off)
-        //             return VirtualKeyShort.CLEAR;
-        //         case '\uE006': // Return
-        //         case '\uE007': // Enter
-        //             return VirtualKeyShort.RETURN;
-        //         case '\uE008': // Shift (use left shift)
-        //             return VirtualKeyShort.LSHIFT;
-        //         case '\uE009': // Control (use left control)
-        //             return VirtualKeyShort.LCONTROL;
-        //         case '\uE00A': // Alt (use left alt)
-        //             return VirtualKeyShort.LMENU;
-        //         case '\uE00B': // Pause
-        //             return VirtualKeyShort.PAUSE;
-        //         case '\uE00C': // Escape
-        //             return VirtualKeyShort.ESCAPE;
-        //         case '\uE00D': // Space
-        //             return VirtualKeyShort.SPACE;
-        //         case '\uE00E': // Page Up
-        //             return VirtualKeyShort.PRIOR;
-        //         case '\uE00F': // Page Down
-        //             return VirtualKeyShort.NEXT;
-        //         case '\uE010': // End
-        //             return VirtualKeyShort.END;
-        //         case '\uE011': // Home
-        //             return VirtualKeyShort.HOME;
-        //         case '\uE012': // Left Arrow
-        //             return VirtualKeyShort.LEFT;
-        //         case '\uE013': // Up Arrow
-        //             return VirtualKeyShort.UP;
-        //         case '\uE014': // Right Arrow
-        //             return VirtualKeyShort.RIGHT;
-        //         case '\uE015': // Down Arrow
-        //             return VirtualKeyShort.DOWN;
-        //         case '\uE016': // Insert
-        //             return VirtualKeyShort.INSERT;
-        //         case '\uE017': // Delete
-        //             return VirtualKeyShort.DELETE;
-        //         case '\uE03D': // Meta (Windows/Command key)
-        //             return VirtualKeyShort.LWIN;
-        //         default:
-        //             // For normal character keys, use VkKeyScan to get the virtual-key code
-        //             short vkScan = User32.VkKeyScan(keyChar);
-        //             if (vkScan == -1)
-        //             {
-        //                 // Character is not supported by the current keyboard layout
-        //                 throw new InvalidOperationException($"No virtual key code found for character '{keyChar}' in the current keyboard layout.");
-        //             }
-        //             // The low-order byte is the virtual-key code
-        //             byte vkCode = (byte)(vkScan & 0xFF);
-        //             return (VirtualKeyShort)vkCode;
-        //     }
-        // }
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-        private static extern short VkKeyScanEx(char ch, IntPtr dwhkl);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr GetKeyboardLayout(uint idThread);
-
-        /// <summary>
-        /// Gets the corresponding VirtualKeyShort for a given key code.
-        /// This function handles both WebDriver special keys (e.g., Keys.Enter, Keys.Tab, Keys.F1, etc.)
-        /// and normal character keys.
-        /// </summary>
-        public static VirtualKeyShort GetVirtualKey(string code)
+        public static short GetVkScanResult(char ch)
         {
-            if (string.IsNullOrEmpty(code))
-            {
-                throw new ArgumentException("Key code cannot be null or empty.", nameof(code));
-            }
-            // First, normalize the code so that names like "Control" become "\uE009"
-            string normalized = GetNormalizedKeyValue(code);
-            if (string.IsNullOrEmpty(normalized))
-            {
-                throw new ArgumentException("Normalized key code is null or empty.", nameof(code));
-            }
-            // Ensure that the normalized code represents a single key or a valid surrogate pair.
-            if (normalized.Length > 1 && !char.IsSurrogatePair(normalized, 0))
-            {
-                throw new ArgumentException("Key code must be a single key or key cluster.", nameof(code));
-            }
-            int codePoint = (normalized.Length == 1) ? normalized[0] : char.ConvertToUtf32(normalized, 0);
-
-            // Handle WebDriver special keys in the Unicode PUA range (U+E000 to U+E03D)
-            if (codePoint >= 0xE000 && codePoint <= 0xE03D)
-            {
-                switch (codePoint)
-                {
-                    case 0xE000: // Null key: no physical key
-                        return (VirtualKeyShort)0;
-                    case 0xE001: return VirtualKeyShort.CANCEL;
-                    case 0xE002: return VirtualKeyShort.HELP;
-                    case 0xE003: return VirtualKeyShort.BACK;
-                    case 0xE004: return VirtualKeyShort.TAB;
-                    case 0xE005: return VirtualKeyShort.CLEAR;
-                    case 0xE006: // Return
-                    case 0xE007: // Enter
-                        return VirtualKeyShort.RETURN;
-                    case 0xE008: // Shift (use left shift)
-                        return VirtualKeyShort.SHIFT;
-                    case 0xE009: // Control (use left control)
-                        return VirtualKeyShort.CONTROL;
-                    case 0xE00A: // Alt (use left alt)
-                        return VirtualKeyShort.ALT;
-                    case 0xE00B: return VirtualKeyShort.PAUSE;
-                    case 0xE00C: return VirtualKeyShort.ESCAPE;
-                    case 0xE00D: return VirtualKeyShort.SPACE;
-                    case 0xE00E: return VirtualKeyShort.PRIOR;
-                    case 0xE00F: return VirtualKeyShort.NEXT;
-                    case 0xE010: return VirtualKeyShort.END;
-                    case 0xE011: return VirtualKeyShort.HOME;
-                    case 0xE012: return VirtualKeyShort.LEFT;
-                    case 0xE013: return VirtualKeyShort.UP;
-                    case 0xE014: return VirtualKeyShort.RIGHT;
-                    case 0xE015: return VirtualKeyShort.DOWN;
-                    case 0xE016: return VirtualKeyShort.INSERT;
-                    case 0xE017: return VirtualKeyShort.DELETE;
-                    // Handle function keys F1-F12
-                    case 0xE031: return VirtualKeyShort.F1;
-                    case 0xE032: return VirtualKeyShort.F2;
-                    case 0xE033: return VirtualKeyShort.F3;
-                    case 0xE034: return VirtualKeyShort.F4;
-                    case 0xE035: return VirtualKeyShort.F5;
-                    case 0xE036: return VirtualKeyShort.F6;
-                    case 0xE037: return VirtualKeyShort.F7;
-                    case 0xE038: return VirtualKeyShort.F8;
-                    case 0xE039: return VirtualKeyShort.F9;
-                    case 0xE03A: return VirtualKeyShort.F10;
-                    case 0xE03B: return VirtualKeyShort.F11;
-                    case 0xE03C: return VirtualKeyShort.F12;
-                    case 0xE03D: return VirtualKeyShort.LWIN;
-                }
-            }
-
-            // For normal characters, use Windows API to map to a virtual key.
-            if (codePoint > 0xFFFF)
-            {
-                // Characters outside the BMP (e.g. emoji) are not typeable via a single key.
-                return VirtualKeyShort.PACKET;
-            }
-            char character = (char)codePoint;
-            IntPtr layout = GetKeyboardLayout(0);
-            short result = VkKeyScanEx(character, layout);
-            if (result == -1)
-            {
-                return VirtualKeyShort.PACKET;
-            }
-            byte vkCode = (byte)(result & 0xFF);
-            return (VirtualKeyShort)vkCode;
+            return VkKeyScanEx(ch, GetKeyboardLayout(0));
+        }
+        
+        /// <summary>
+        /// A public helper that wraps VkKeyScanEx.
+        /// Use this to get the full scan result (including modifier information) for the given character.
+        /// </summary>
+        public static short GetVkScanEx(char ch, IntPtr layout)
+        {
+            return VkKeyScanEx(ch, layout);
         }
 
+        // --- Unicode Injection Helper (fallback) ---
+        /// <summary>
+        /// Dispatches a Unicode keystroke via SendInput (down + up) using the KEYEVENTF_UNICODE flag.
+        /// Use this only when a normal physical key mapping is unavailable (i.e. GetVirtualKey returns PACKET).
+        /// </summary>
+        public static void DispatchUnicodeKeystroke(char unicodeChar)
+        {
+            INPUT[] inputs = new INPUT[2];
+
+            // Key down event using Unicode injection.
+            inputs[0] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0, // Ignored when KEYEVENTF_UNICODE is used.
+                        wScan = unicodeChar,
+                        dwFlags = KEYEVENTF_UNICODE,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            // Key up event.
+            inputs[1] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = unicodeChar,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            if (sent != inputs.Length)
+            {
+                int error = Marshal.GetLastWin32Error();
+                System.Diagnostics.Debug.WriteLine($"SendInput error: {error}");
+            }
+            System.Threading.Thread.Sleep(50);
+        }
 
         /// <summary>
-        /// Checks whether the provided key cluster (string) is directly typeable using the current keyboard layout.
-        /// Returns true if every character in the cluster can be produced by a standard keystroke (with any needed modifiers).
+        /// Checks whether the provided key cluster (string) is directly typeable under the current keyboard layout.
+        /// Returns true if every character in the cluster can be produced by a standard keystroke.
         /// </summary>
         public static bool IsTypeable(string cluster)
         {
@@ -347,65 +295,47 @@ namespace FlaUI.WebDriver
                 return false;
             }
 
-            // Use the keyboard layout for possible API lookups.
             IntPtr layout = GetKeyboardLayout(0);
-            // Iterate through each code point (handling surrogate pairs)
             for (int i = 0; i < cluster.Length; i++)
             {
                 int codePoint;
                 if (i < cluster.Length - 1 && char.IsSurrogatePair(cluster, i))
                 {
                     codePoint = char.ConvertToUtf32(cluster, i);
-                    i++; // advance past the surrogate pair
+                    i++;
                 }
                 else
                 {
                     codePoint = cluster[i];
                 }
 
-                // Skip the WebDriver "Null" key.
                 if (codePoint == 0xE000)
-                {
                     continue;
-                }
-
-                // If it is one of the special WebDriver keys, consider it typeable.
                 if (codePoint >= 0xE001 && codePoint <= 0xE03D)
-                {
                     continue;
-                }
-
-                // Characters outside the BMP (such as many emoji) are not produced by a single keystroke.
                 if (codePoint > 0xFFFF)
-                {
                     return false;
-                }
 
-                // For normal characters, check their Unicode category.
                 char ch = (char)codePoint;
                 var category = char.GetUnicodeCategory(ch);
-
-                // Accept as typeable if the character is any kind of letter, digit, punctuation or symbol.
-                if (category == System.Globalization.UnicodeCategory.UppercaseLetter ||
-                    category == System.Globalization.UnicodeCategory.LowercaseLetter ||
-                    category == System.Globalization.UnicodeCategory.TitlecaseLetter ||
-                    category == System.Globalization.UnicodeCategory.DecimalDigitNumber ||
-                    category == System.Globalization.UnicodeCategory.CurrencySymbol ||
-                    category == System.Globalization.UnicodeCategory.MathSymbol ||
-                    category == System.Globalization.UnicodeCategory.OtherPunctuation ||
-                    category == System.Globalization.UnicodeCategory.DashPunctuation ||
-                    category == System.Globalization.UnicodeCategory.OpenPunctuation ||
-                    category == System.Globalization.UnicodeCategory.ClosePunctuation ||
-                    category == System.Globalization.UnicodeCategory.InitialQuotePunctuation ||
-                    category == System.Globalization.UnicodeCategory.FinalQuotePunctuation ||
-                    category == System.Globalization.UnicodeCategory.OtherSymbol)
+                if (category == UnicodeCategory.UppercaseLetter ||
+                    category == UnicodeCategory.LowercaseLetter ||
+                    category == UnicodeCategory.TitlecaseLetter ||
+                    category == UnicodeCategory.DecimalDigitNumber ||
+                    category == UnicodeCategory.CurrencySymbol ||
+                    category == UnicodeCategory.MathSymbol ||
+                    category == UnicodeCategory.OtherPunctuation ||
+                    category == UnicodeCategory.DashPunctuation ||
+                    category == UnicodeCategory.OpenPunctuation ||
+                    category == UnicodeCategory.ClosePunctuation ||
+                    category == UnicodeCategory.InitialQuotePunctuation ||
+                    category == UnicodeCategory.FinalQuotePunctuation ||
+                    category == UnicodeCategory.OtherSymbol)
                 {
-                    // We consider these categories as typeable.
                     continue;
                 }
                 else
                 {
-                    // As a last resort, try mapping with VkKeyScanEx.
                     short vkMapping = VkKeyScanEx(ch, layout);
                     if (vkMapping == -1)
                     {
@@ -426,9 +356,9 @@ namespace FlaUI.WebDriver
             string normKey = GetNormalizedKeyValue(keyValue);
             return (normKey == LeftShift || normKey == Control || normKey == Alt || normKey == Meta);
         }
-        
+
         /// <summary>
-        /// Determines whether a character requires a shifted key press (e.g., uppercase or symbol requiring Shift)
+        /// Determines whether a character requires Shift (e.g. uppercase letters or symbols).
         /// </summary>
         public static bool IsShiftedChar(char key)
         {
@@ -440,12 +370,48 @@ namespace FlaUI.WebDriver
         }
 
         /// <summary>
-        /// Gets the virtual key code for a given key value.
-        /// This is similar to GetVirtualKey but provided as an alias.
+        /// Gets the virtual key code for a given key value (alias to GetVirtualKey).
         /// </summary>
         public static VirtualKeyShort GetCode(string keyValue)
         {
             return GetVirtualKey(keyValue);
         }
+
+        private const int INPUT_KEYBOARD = 1;
+        private const uint KEYEVENTF_UNICODE = 0x0004;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public int type;
+            public InputUnion u;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct InputUnion
+        {
+            [FieldOffset(0)]
+            public KEYBDINPUT ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern short VkKeyScanEx(char ch, IntPtr dwhkl);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr GetKeyboardLayout(uint idThread);
     }
 }

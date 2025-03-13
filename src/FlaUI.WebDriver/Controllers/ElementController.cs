@@ -184,7 +184,7 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpPost("{elementId}/value")]
-        public async Task<ActionResult> ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
+        public ActionResult ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
         {
             _logger.LogDebug("Element send keys for session {SessionId} and element {ElementId}", sessionId, elementId);
 
@@ -195,7 +195,8 @@ namespace FlaUI.WebDriver.Controllers
 
             if (element.Properties.IsOffscreen.IsSupported)
             {
-                if (!await Wait.Until(() => !element.IsOffscreen, session.ImplicitWaitTimeout))
+                // Synchronously wait for the element to be onscreen.
+                if (!Wait.Until(() => !element.IsOffscreen, session.ImplicitWaitTimeout).GetAwaiter().GetResult())
                 {
                     return ElementNotInteractable(elementId);
                 }
@@ -203,22 +204,16 @@ namespace FlaUI.WebDriver.Controllers
 
             element.Focus();
 
-            // Warning: Deviation from the spec. https://www.w3.org/TR/webdriver2/#element-send-keys says:
-            //
-            // > Set the text insertion caret using set selection range using current text length for both the start and end parameters.
-            //
-            // In English: "the caret should be placed at the end of the text before sending keys". That doesn't seem to be possible
-            // with UIA, meaning that the text gets inserted at the beginning, which is also WinAppDriver's behavior.
-
+            // Create a unique input source and add it to the session.
             var inputState = session.InputState;
             var inputId = Guid.NewGuid().ToString();
             var source = (KeyInputSource)inputState.CreateInputSource("key");
 
             inputState.AddInputSource(inputId, source);
-
             try
             {
-                await _actionsDispatcher.DispatchActionsForString(session, inputId, source, elementSendKeysRequest.Text);
+                // Use the synchronous dispatch for full key sequence.
+                _actionsDispatcher.DispatchActionsForStringSync(session, inputId, source, elementSendKeysRequest.Text);
             }
             finally
             {

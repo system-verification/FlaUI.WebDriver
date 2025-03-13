@@ -1,6 +1,9 @@
-﻿using FlaUI.WebDriver.Models;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using FlaUI.WebDriver.Models;
 using FlaUI.WebDriver.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace FlaUI.WebDriver.Controllers
 {
@@ -20,23 +23,41 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> PerformActions([FromRoute] string sessionId, [FromBody] ActionsRequest actionsRequest)
+        public ActionResult PerformActions([FromRoute] string sessionId, [FromBody] ActionsRequest actionsRequest)
         {
             _logger.LogDebug("Performing actions for session {SessionId}", sessionId);
-
             var session = GetSession(sessionId);
-            var actionsByTick = ExtractActionSequence(session, actionsRequest);
-            foreach (var tickActions in actionsByTick)
-            {
-                var tickDuration = tickActions.Max(tickAction => tickAction.Duration) ?? 0;
-                var dispatchTickActionTasks = tickActions.Select(tickAction => _actionsDispatcher.DispatchAction(session, tickAction));
-                if (tickDuration > 0)
-                {
-                    dispatchTickActionTasks = dispatchTickActionTasks.Concat(new[] { Task.Delay(tickDuration) });
-                }
-                await Task.WhenAll(dispatchTickActionTasks);
-            }
 
+            // If the action sequence is for keys: process them in one batch synchronously.
+            if (actionsRequest.Actions.Count == 1 && actionsRequest.Actions[0].Type == "key")
+            {
+                var actionSequence = actionsRequest.Actions[0];
+                var fullText = string.Concat(actionSequence.Actions.Select(a => a.Value));
+
+                // Get or create the input source and ensure it's a KeyInputSource.
+                var inputSourceObj = session.InputState.GetOrCreateInputSource("key", actionSequence.Id);
+                if (!(inputSourceObj is KeyInputSource keySource))
+                {
+                    throw new InvalidOperationException("Input source is not a valid KeyInputSource.");
+                }
+
+                _actionsDispatcher.DispatchActionsForStringSync(session, actionSequence.Id, keySource, fullText);
+            }
+            else
+            {
+                // Existing fallback for actions per tick asynchronously...
+                var actionsByTick = ExtractActionSequence(session, actionsRequest);
+                foreach (var tickActions in actionsByTick)
+                {
+                    var tickDuration = tickActions.Max(tickAction => tickAction.Duration) ?? 0;
+                    var dispatchTickActionTasks = tickActions.Select(tickAction => _actionsDispatcher.DispatchAction(session, tickAction));
+                    if (tickDuration > 0)
+                    {
+                        dispatchTickActionTasks = dispatchTickActionTasks.Concat(new[] { Task.Delay(tickDuration) });
+                    }
+                    Task.WhenAll(dispatchTickActionTasks).GetAwaiter().GetResult();
+                }
+            }
             return WebDriverResult.Success();
         }
 
@@ -44,43 +65,31 @@ namespace FlaUI.WebDriver.Controllers
         public async Task<ActionResult> ReleaseActions([FromRoute] string sessionId)
         {
             _logger.LogDebug("Releasing actions for session {SessionId}", sessionId);
-
             var session = GetSession(sessionId);
-
             foreach (var cancelAction in session.InputState.InputCancelList)
             {
                 await _actionsDispatcher.DispatchAction(session, cancelAction);
             }
             session.InputState.Reset();
-
             return WebDriverResult.Success();
         }
 
-        /// <summary>
-        /// See https://www.w3.org/TR/webdriver2/#dfn-extract-an-action-sequence.
-        /// Returns all sequence actions synchronized by index.
-        /// </summary>
-        /// <param name="session">The session</param>
-        /// <param name="actionsRequest">The request</param>
-        /// <returns></returns>
-        private static List<List<Action>> ExtractActionSequence(Session session, ActionsRequest actionsRequest)
+        private static System.Collections.Generic.List<System.Collections.Generic.List<Action>> ExtractActionSequence(Session session, ActionsRequest actionsRequest)
         {
-            var actionsByTick = new List<List<Action>>();
+            var actionsByTick = new System.Collections.Generic.List<System.Collections.Generic.List<Action>>();
             foreach (var actionSequence in actionsRequest.Actions)
             {
-                // TODO: Implement other input source types.
                 if (actionSequence.Type == "key")
                 {
                     session.InputState.GetOrCreateInputSource(actionSequence.Type, actionSequence.Id);
                 }
-
                 for (var tickIndex = 0; tickIndex < actionSequence.Actions.Count; tickIndex++)
                 {
                     var actionItem = actionSequence.Actions[tickIndex];
                     var action = new Action(actionSequence, actionItem);
                     if (actionsByTick.Count < tickIndex + 1)
                     {
-                        actionsByTick.Add(new List<Action>());
+                        actionsByTick.Add(new System.Collections.Generic.List<Action>());
                     }
                     actionsByTick[tickIndex].Add(action);
                 }

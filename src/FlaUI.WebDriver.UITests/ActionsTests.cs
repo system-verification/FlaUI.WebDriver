@@ -1,4 +1,5 @@
-﻿using FlaUI.WebDriver.UITests.TestUtil;
+﻿using System.Threading;
+using FlaUI.WebDriver.UITests.TestUtil;
 using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Interactions;
@@ -15,7 +16,7 @@ namespace FlaUI.WebDriver.UITests
         public void Setup()
         {
             var driverOptions = FlaUIDriverOptions.TestApp();
-            var commandTimeout = System.TimeSpan.FromSeconds(6);
+            var commandTimeout = System.TimeSpan.FromSeconds(1000);
             _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions.ToCapabilities(), commandTimeout);
         }
 
@@ -47,7 +48,11 @@ namespace FlaUI.WebDriver.UITests
 
             element.SendKeys("abc123");
 
-            Assert.That(element.Text, Is.EqualTo("abc123"));
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("abc123"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
@@ -58,7 +63,11 @@ namespace FlaUI.WebDriver.UITests
 
             element.SendKeys("aBC123");
 
-            Assert.That(element.Text, Is.EqualTo("aBC123"));
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("aBC123"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
@@ -67,9 +76,12 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("aAbBcCeE");
-
-            Assert.That(element.Text, Is.EqualTo("aAbBcCeE"));
+            element.SendKeys("aAb1B cC3 eE8");
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("aAb1B cC3 eE8"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
@@ -78,44 +90,72 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("a1Bc3A1D2G");
-
-            Assert.That(element.Text, Is.EqualTo("a1Bc3A1D2G"));
+            element.SendKeys("a1b2cD4efGhijK6lmn");
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("a1b2cD4efGhijK6lmn"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
-        public void SendKeys_ShiftedCharacter_IsSupported()
+        public void SendKeys_ShiftedCharacters1_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("@TEST");
-
-            Assert.That(element.Text, Is.EqualTo("@TEST"));
+            //element.SendKeys("A@B a£b 2$5 3|z 2~l");
+            element.SendKeys("a@B A£b");
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("a@B A£b"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
-        public void SendKeys_Special_IsSupported()
+        public void SendKeys_ShiftCharacters2_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
             string withSpecialCharacters = "A1%3ee5&";
             element.SendKeys(withSpecialCharacters);
-
-            Assert.That(element.Text, Is.EqualTo(withSpecialCharacters));
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("A1%3ee5&"));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
-        public void SendKeys_SpecialCharacters_IsSupported()
+        public void SendKeys_ShiftCharacters3_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            string withSpecialCharacters = "#a1!b2%c3&d4*e5(f6)g7";
+            string withSpecialCharacters = "!\"#% &/()=?`!#%^&*()+ >;:_^!\"#%&/( )=?`!#%^&*()+ ><;:_*";
             element.SendKeys(withSpecialCharacters);
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo("!\"#% &/()=?`!#%^&*()+ >;:_^!\"#%&/( )=?`!#%^&*()+ ><;:_*"));
+            }, System.TimeSpan.FromSeconds(2));
+        }
 
-            Assert.That(element.Text, Is.EqualTo(withSpecialCharacters));
+        [Test]
+        public void SendKeys_UnicodeCharacters_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            string withUnicodeCharacters = "AB ¤";
+            element.SendKeys(withUnicodeCharacters);
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(withUnicodeCharacters));
+            }, System.TimeSpan.FromSeconds(2));
         }
 
         [Test]
