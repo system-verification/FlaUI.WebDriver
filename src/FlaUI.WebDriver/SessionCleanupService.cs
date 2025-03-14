@@ -64,7 +64,7 @@ namespace FlaUI.WebDriver
             }
             else
             {
-                //_logger.LogDebug("Session cleanup service did not find sessions to cleanup");
+                _logger.LogDebug("Session cleanup service did not find sessions to cleanup");
             }
         }
 
