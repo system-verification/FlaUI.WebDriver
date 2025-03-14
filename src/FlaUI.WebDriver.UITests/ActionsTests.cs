@@ -40,23 +40,6 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
-        public void PerformActions_KeyDownKeyUp_IsSupported()
-        {
-            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-            element.Click();
-
-            new Actions(_driver)
-                .KeyDown(Keys.Control)
-                .KeyDown(Keys.Backspace)
-                .KeyUp(Keys.Backspace)
-                .KeyUp(Keys.Control)
-                .Perform();
-
-            string activeElementText = _driver.SwitchTo().ActiveElement().Text;
-            Assert.That(activeElementText, Is.EqualTo("Test "));
-        }
-
-        [Test]
         public void SendKeys_Default_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
@@ -106,11 +89,12 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("a1b2cD4efGhijK6lmn");
+            var testValue = "a1b2cD4efGhijK6lmn a1b2cD4efGhijK6lmn";
+            element.SendKeys(testValue);
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("a1b2cD4efGhijK6lmn"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
             }, System.TimeSpan.FromSeconds(2));
         }
 
@@ -157,7 +141,7 @@ namespace FlaUI.WebDriver.UITests
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("A1%3ee5&"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(withSpecialCharacters));
             }, System.TimeSpan.FromSeconds(2));
         }
 
@@ -165,11 +149,11 @@ namespace FlaUI.WebDriver.UITests
         public void SendKeys_ShiftCharacters3_IsSupported((string id, string name) layout)
         {
             KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
-            
+
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            string withSpecialCharacters = "!\"#% &/()=?`!#%^&*()+ >;:_^!\"#%&/( )=?`!#%^&*()+ ><;:_*";
+            string withSpecialCharacters = "!\"#Aa% &/(12)=?`!#%Bb^&*()+ >;:_^!\"#%&/(cC )=?Vv`!#%^&*(56)+ ><;:_*";
             element.SendKeys(withSpecialCharacters);
             KeyboardHelper.Retry(() =>
             {
@@ -177,20 +161,22 @@ namespace FlaUI.WebDriver.UITests
                 Assert.That(refreshedElement.Text, Is.EqualTo(withSpecialCharacters));
             }, System.TimeSpan.FromSeconds(2));
         }
-
+ 
         [Test]
-        public void SendKeys_UnicodeCharacters_IsSupported()
+        public void PerformActions_KeyDownKeyUp_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-            element.Clear();
+            element.Click();
 
-            string withUnicodeCharacters = "AB ¤";
-            element.SendKeys(withUnicodeCharacters);
-            KeyboardHelper.Retry(() =>
-            {
-                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo(withUnicodeCharacters));
-            }, System.TimeSpan.FromSeconds(2));
+            new Actions(_driver)
+                .KeyDown(Keys.Control)
+                .KeyDown(Keys.Backspace)
+                .KeyUp(Keys.Backspace)
+                .KeyUp(Keys.Control)
+                .Perform();
+
+            string activeElementText = _driver.SwitchTo().ActiveElement().Text;
+            Assert.That(activeElementText, Is.EqualTo("Test "));
         }
 
         [Test]

@@ -411,6 +411,10 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             Keyboard.Press(virtualKey);
+                            // Create and record the matching keyUp action for the cancel action feature
+                            var cancelAction = action.Clone();
+                            cancelAction.SubType = "keyUp";
+                            session.InputState.InputCancelList.Add(cancelAction);
                         }
                         break;
                     }
@@ -431,6 +435,8 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             Keyboard.Release(virtualKey);
+                            // Remove the matching cancel action.
+                            session.InputState.InputCancelList.RemoveAll(a => a.Value == key && a.SubType == "keyUp");
                         }
                         break;
                     }

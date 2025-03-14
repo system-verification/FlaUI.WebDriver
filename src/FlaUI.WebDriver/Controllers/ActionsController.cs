@@ -28,24 +28,39 @@ namespace FlaUI.WebDriver.Controllers
             _logger.LogDebug("Performing actions for session {SessionId}", sessionId);
             var session = GetSession(sessionId);
 
-            // If the action sequence is for keys: process them in one batch synchronously.
             if (actionsRequest.Actions.Count == 1 && actionsRequest.Actions[0].Type == "key")
             {
                 var actionSequence = actionsRequest.Actions[0];
-                var fullText = string.Concat(actionSequence.Actions.Select(a => a.Value));
-
-                // Get or create the input source and ensure it's a KeyInputSource.
-                var inputSourceObj = session.InputState.GetOrCreateInputSource("key", actionSequence.Id);
-                if (!(inputSourceObj is KeyInputSource keySource))
+                // Instead of always merging into fullText, check if it is a plain text sequence.
+                if (IsPlainTextSequence(actionSequence))
                 {
-                    throw new InvalidOperationException("Input source is not a valid KeyInputSource.");
+                    var fullText = string.Concat(actionSequence.Actions.Select(a => a.Value));
+                    var inputSourceObj = session.InputState.GetOrCreateInputSource("key", actionSequence.Id);
+                    if (!(inputSourceObj is KeyInputSource keySource))
+                    {
+                        throw new InvalidOperationException("Input source is not a valid KeyInputSource.");
+                    }
+                    _actionsDispatcher.DispatchActionsForStringSync(session, actionSequence.Id, keySource, fullText);
                 }
-
-                _actionsDispatcher.DispatchActionsForStringSync(session, actionSequence.Id, keySource, fullText);
+                else
+                {
+                    // Process all events individually if the sequence includes modifiers.
+                    var actionsByTick = ExtractActionSequence(session, actionsRequest);
+                    foreach (var tickActions in actionsByTick)
+                    {
+                        var tickDuration = tickActions.Max(tickAction => tickAction.Duration) ?? 0;
+                        var dispatchTickActionTasks = tickActions.Select(tickAction => _actionsDispatcher.DispatchAction(session, tickAction));
+                        if (tickDuration > 0)
+                        {
+                            dispatchTickActionTasks = dispatchTickActionTasks.Concat(new[] { Task.Delay(tickDuration) });
+                        }
+                        Task.WhenAll(dispatchTickActionTasks).GetAwaiter().GetResult();
+                    }
+                }
             }
             else
             {
-                // Existing fallback for actions per tick asynchronously...
+                // Fallback for multi-type actions.
                 var actionsByTick = ExtractActionSequence(session, actionsRequest);
                 foreach (var tickActions in actionsByTick)
                 {
@@ -62,13 +77,14 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpDelete]
-        public async Task<ActionResult> ReleaseActions([FromRoute] string sessionId)
+        public ActionResult ReleaseActions([FromRoute] string sessionId)
         {
             _logger.LogDebug("Releasing actions for session {SessionId}", sessionId);
             var session = GetSession(sessionId);
-            foreach (var cancelAction in session.InputState.InputCancelList)
+            // Dispatch every remaining cancel (keyUp) action for keys still pressed.
+            foreach (var cancelAction in session.InputState.InputCancelList.ToList())
             {
-                await _actionsDispatcher.DispatchAction(session, cancelAction);
+                _actionsDispatcher.DispatchAction(session, cancelAction).GetAwaiter().GetResult();
             }
             session.InputState.Reset();
             return WebDriverResult.Success();
@@ -106,6 +122,15 @@ namespace FlaUI.WebDriver.Controllers
             }
             session.SetLastCommandTimeToNow();
             return session;
+        }
+
+        private bool IsPlainTextSequence(ActionSequence sequence)
+        {
+            return sequence.Actions.All(a =>
+                !string.IsNullOrEmpty(a.Value) &&
+                string.IsNullOrEmpty(a.Type) &&
+                !Keys.IsModifier(a.Value!) &&
+                a.Value!.Length == 1);
         }
     }
 }
