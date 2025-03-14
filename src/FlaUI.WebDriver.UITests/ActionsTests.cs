@@ -1,4 +1,4 @@
-﻿using System.Threading;
+﻿using System.Collections.Generic;
 using FlaUI.WebDriver.UITests.TestUtil;
 using NUnit.Framework;
 using OpenQA.Selenium;
@@ -16,7 +16,7 @@ namespace FlaUI.WebDriver.UITests
         public void Setup()
         {
             var driverOptions = FlaUIDriverOptions.TestApp();
-            var commandTimeout = System.TimeSpan.FromSeconds(1000);
+            var commandTimeout = System.TimeSpan.FromSeconds(10);
             _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions.ToCapabilities(), commandTimeout);
         }
 
@@ -28,13 +28,29 @@ namespace FlaUI.WebDriver.UITests
             _driver?.Dispose();
         }
 
+        // Data source for available keyboard layouts
+        public static IEnumerable<(string,string)> LoadedKeyboardLayouts => KeyboardLayoutHelper.GetLoadedKeyboardLayouts();
+
+        public static IEnumerable<TestCaseData> LoadedKeyboardLayouts2()
+        {
+            foreach (var layout in KeyboardLayoutHelper.GetLoadedKeyboardLayouts())
+            {
+                yield return new TestCaseData(layout.Item1, layout.Item2).SetName(layout.Item2);
+            }
+        }
+
         [Test]
         public void PerformActions_KeyDownKeyUp_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Click();
 
-            new Actions(_driver).KeyDown(Keys.Control).KeyDown(Keys.Backspace).KeyUp(Keys.Backspace).KeyUp(Keys.Control).Perform();
+            new Actions(_driver)
+                .KeyDown(Keys.Control)
+                .KeyDown(Keys.Backspace)
+                .KeyUp(Keys.Backspace)
+                .KeyUp(Keys.Control)
+                .Perform();
 
             string activeElementText = _driver.SwitchTo().ActiveElement().Text;
             Assert.That(activeElementText, Is.EqualTo("Test "));
@@ -98,18 +114,35 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
+        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
+        public void SendKeys_ShiftedCharacters1_IsSupported((string id, string name) layout)
+        {
+            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
+
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            var testValue = "aA@Bb aA$Bb 3Aa|zD 2gG~lsS Ff\\1pP <>11aA";
+            element.SendKeys(testValue);
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
+            }, System.TimeSpan.FromSeconds(2));
+        }
+
         [Test]
-        public void SendKeys_ShiftedCharacters1_IsSupported()
+        public void SendKeys_UnicodeCharacters1_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            //element.SendKeys("A@B a£b 2$5 3|z 2~l");
-            element.SendKeys("a@B A£b");
+            var _sendString = "aA£Bb aA€Bb 4aF¤1rR";
+            element.SendKeys(_sendString);
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("a@B A£b"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(_sendString));
             }, System.TimeSpan.FromSeconds(2));
         }
 
@@ -128,9 +161,11 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
-        [Test]
-        public void SendKeys_ShiftCharacters3_IsSupported()
+        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
+        public void SendKeys_ShiftCharacters3_IsSupported((string id, string name) layout)
         {
+            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
+            
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
@@ -139,7 +174,7 @@ namespace FlaUI.WebDriver.UITests
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("!\"#% &/()=?`!#%^&*()+ >;:_^!\"#%&/( )=?`!#%^&*()+ ><;:_*"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(withSpecialCharacters));
             }, System.TimeSpan.FromSeconds(2));
         }
 

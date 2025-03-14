@@ -21,7 +21,7 @@ namespace FlaUI.WebDriver.UITests.TestUtil
             };
             options.AddAdditionalOption("appium:automationName", "FlaUI");
             options.AddAdditionalOption("appium:app", path);
-            options.AddAdditionalOption("appium:newCommandTimeout", 1000);
+            options.AddAdditionalOption("appium:newCommandTimeout", 10);
             return options;
         }
 
