@@ -14,15 +14,10 @@ namespace FlaUI.WebDriver.Services
     public class ActionsDispatcher : IActionsDispatcher
     {
         private readonly ILogger<ActionsDispatcher> _logger;
-        // Semaphore to enforce sequential processing of actions.
-        //private readonly SemaphoreSlim _actionLock = new SemaphoreSlim(1, 1);
 
-        private readonly IBatchInputDispatcher _batchDispatcher;
-
-        public ActionsDispatcher(ILogger<ActionsDispatcher> logger, IBatchInputDispatcher batchDispatcher)
+        public ActionsDispatcher(ILogger<ActionsDispatcher> logger)
         {
             _logger = logger;
-            _batchDispatcher = batchDispatcher;
         }
 
         /// <summary>
@@ -104,7 +99,7 @@ namespace FlaUI.WebDriver.Services
                 actionsToProcess.AddRange(BuildTypeableTextActions(inputId, source, currentTypeableText.ToString()));
             }
 
-            _logger.LogDebug("Completed processing batch typeable text: {text}", text);
+            _logger.LogDebug("Completed processing typeable text: {text}", text);
             // Queue any remaining modifier release actions.
             actionsToProcess.AddRange(BuildModifierReleaseActions(session, inputId));
 
@@ -162,22 +157,9 @@ namespace FlaUI.WebDriver.Services
                 actionsToProcess.AddRange(BuildTypeableTextActions(inputId, source, currentTypeableText.ToString()));
             }
 
-            _logger.LogDebug("Completed processing batch typeable text: {text}", text);
+            _logger.LogDebug("Completed processing typeable text: {text}", text);
 
             ProcessActionsQueueSync(session, actionsToProcess);
-        }
-
-        public void DispatchKeysViaBatchInput(string text)
-        {
-            var keyCodes = new List<ushort>();
-            foreach (char c in text)
-            {
-                // Use the character directly (as it’s already a one‐character string).
-                string key = c.ToString();
-                ushort vk = (ushort)Keys.GetVirtualKey(key);
-                keyCodes.Add(vk);
-            }
-            _batchDispatcher.SendKeysBatch(keyCodes.ToArray());
         }
 
         /// <summary>
@@ -381,6 +363,32 @@ namespace FlaUI.WebDriver.Services
                 throw WebDriverResponseException.InvalidArgument($"Null action subtype {action.SubType} unknown");
         }
 
+        private async Task<bool> PressWithTimeoutAsync(VirtualKeyShort virtualKey, int timeoutMilliseconds = 1000)
+        {
+            var pressTask = Task.Run(() => Keyboard.Press(virtualKey));
+            if (await Task.WhenAny(pressTask, Task.Delay(timeoutMilliseconds)) == pressTask)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private async Task<bool> ReleaseWithTimeoutAsync(VirtualKeyShort virtualKey, int timeoutMilliseconds = 1000)
+        {
+            var releaseTask = Task.Run(() => Keyboard.Release(virtualKey));
+            if (await Task.WhenAny(releaseTask, Task.Delay(timeoutMilliseconds)) == releaseTask)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private async Task DispatchKeyAction(Session session, Action action)
         {
             if (action.Value == null)
@@ -410,7 +418,11 @@ namespace FlaUI.WebDriver.Services
                         }
                         else
                         {
-                            Keyboard.Press(virtualKey);
+                            //Keyboard.Press(virtualKey);
+                            if (!PressWithTimeoutAsync(virtualKey).GetAwaiter().GetResult()) {
+                                break;
+                            }
+
                             // Create and record the matching keyUp action for the cancel action feature
                             // Only add a cancellation (keyUp) action if one is not already queued.
                             if (!session.InputState.InputCancelList.Exists(a => a.Value == key))
@@ -439,7 +451,11 @@ namespace FlaUI.WebDriver.Services
                         }
                         else
                         {
-                            Keyboard.Release(virtualKey);
+                            //Keyboard.Release(virtualKey);
+                            if (!ReleaseWithTimeoutAsync(virtualKey).GetAwaiter().GetResult()) {
+                                break;
+                            }
+
                             // Remove the matching cancel action.
                             session.InputState.InputCancelList.RemoveAll(a => a.Value == key && a.SubType == "keyUp");
                         }

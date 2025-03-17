@@ -14,11 +14,16 @@ namespace FlaUI.WebDriver.Services
         private static extern IntPtr ActivateKeyboardLayout(IntPtr hkl, uint Flags);
 
         private const uint KLF_NONE = 0x0000;
+        private readonly ILogger<KeyboardLayoutManager> _logger;
 
         // Public (static) property holding the current active layout.
         public static IntPtr CurrentKeyboardLayout { get; private set; }
 
-        private readonly ILogger<KeyboardLayoutManager> _logger;
+        public static void SetupKeyboardLayout() {
+            CurrentKeyboardLayout = GetKeyboardLayout(0);
+            uint currentLayoutId = (uint)CurrentKeyboardLayout & 0xFFFF;
+            ActivateKeyboardLayout(CurrentKeyboardLayout, KLF_NONE);
+        }
 
         public KeyboardLayoutManager(ILogger<KeyboardLayoutManager> logger)
         {

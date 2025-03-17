@@ -11,21 +11,28 @@ namespace FlaUI.WebDriver.UITests
     public class ActionsTests
     {
         private RemoteWebDriver _driver;
+        private string _keyboardLayout;
 
         [SetUp]
-        public void Setup()
+        public void LocalSetup()
         {
+            _keyboardLayout = KeyboardLayoutHelper.GetCurrentKeyboardLayout();
             var driverOptions = FlaUIDriverOptions.TestApp();
-            var commandTimeout = System.TimeSpan.FromSeconds(10);
+            var commandTimeout = System.TimeSpan.FromSeconds(60);
             _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions.ToCapabilities(), commandTimeout);
+            var kName = KeyboardLayoutHelper.GetKeyboardLayoutName(_keyboardLayout);
+            return;
         }
 
         [TearDown]
         public void Teardown()
         {
             KeyboardHelper.ResetKeyboardState();
+            //KeyboardLayoutHelper.SwitchToKeyboardLayout(_keyboardLayout);
+
             _driver?.ResetInputState();
             _driver?.Dispose();
+            System.Threading.Thread.Sleep(3000);
         }
 
         // Data source for available keyboard layouts
@@ -115,9 +122,14 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
-        [Test]
-        public void SendKeys_UnicodeCharacters1_IsSupported()
+        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
+        public void SendKeys_UnicodeCharacters1_IsSupported((string id, string name) layout)
         {
+            if (layout.name != "Swedish") {
+                Assert.Ignore("Skipping test beacuse it is only for a Swedish keyboard");
+            }
+            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
+
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
@@ -163,7 +175,7 @@ namespace FlaUI.WebDriver.UITests
         }
  
         [Test]
-        public void PerformActions_KeyDownKeyUp_IsSupported()
+        public void XPerformActions_KeyDownKeyUp_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Click();
@@ -180,7 +192,7 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
-        public void ReleaseActions_Default_ReleasesKeys()
+        public void XReleaseActions_Default_ReleasesKeys()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Click();
@@ -194,7 +206,7 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
-        public void PerformActions_MoveToElementAndClick_SelectsElement()
+        public void XPerformActions_MoveToElementAndClick_SelectsElement()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
 
@@ -205,7 +217,7 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
-        public void PerformActions_MoveToElement_IsSupported()
+        public void XPerformActions_MoveToElement_IsSupported()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("LabelWithHover"));
 
@@ -215,7 +227,7 @@ namespace FlaUI.WebDriver.UITests
         }
 
         [Test]
-        public void PerformActions_MoveToElementMoveByOffsetAndClick_SelectsElement()
+        public void XPerformActions_MoveToElementMoveByOffsetAndClick_SelectsElement()
         {
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
 

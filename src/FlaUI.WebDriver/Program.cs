@@ -21,9 +21,9 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-builder.Services.AddSingleton<KeyboardLayoutManager>();
+
 builder.Services.AddSingleton<ISessionRepository, SessionRepository>();
-builder.Services.AddSingleton<IBatchInputDispatcher, BatchInputDispatcher>();
+builder.Services.AddScoped<KeyboardLayoutManager>();
 builder.Services.AddScoped<IActionsDispatcher, ActionsDispatcher>();
 builder.Services.AddScoped<IWindowsExtensionService, WindowsExtensionService>();
 builder.Services.AddScoped<IConditionParser, ConditionParser>();

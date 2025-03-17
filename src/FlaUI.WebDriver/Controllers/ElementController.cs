@@ -187,6 +187,7 @@ namespace FlaUI.WebDriver.Controllers
         public ActionResult ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
         {
             _logger.LogDebug("Element send keys for session {SessionId} and element {ElementId}", sessionId, elementId);
+            KeyboardLayoutManager.SetupKeyboardLayout();
 
             var session = GetActiveSession(sessionId);
             var element = GetElement(session, elementId);
