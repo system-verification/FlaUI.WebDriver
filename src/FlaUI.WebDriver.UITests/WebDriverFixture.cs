@@ -10,7 +10,7 @@ namespace FlaUI.WebDriver.UITests
     public class WebDriverFixture
     {
         public static readonly Uri WebDriverUrl = new Uri("http://localhost:4723/");
-        public static readonly TimeSpan SessionCleanupInterval = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan SessionCleanupInterval = TimeSpan.FromSeconds(180);
 
         private Process _webDriverProcess;
 

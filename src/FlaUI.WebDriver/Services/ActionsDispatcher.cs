@@ -171,12 +171,16 @@ namespace FlaUI.WebDriver.Services
             foreach (var act in actions)
             {
                 await DispatchAction(session, act);
+                // Flush the system input by waiting briefly.
+                await Task.Delay(1); //Thread.Sleep(1);
             }
             _logger.LogDebug("Dispatching final pause action to flush pending input events.");
             await DispatchAction(session, new Action(
                     new ActionSequence { Id = "flush", Type = "key" },
                     new ActionItem { Type = "pause", Value = null }
                 ));
+            // Flush the system input by waiting briefly.
+            await Task.Delay(1); //Thread.Sleep(1);
         }
 
         /// <summary>
@@ -189,14 +193,14 @@ namespace FlaUI.WebDriver.Services
             {
                 DispatchAction(session, act).GetAwaiter().GetResult();
                 // Flush the system input by waiting briefly.
-                System.Threading.Thread.Sleep(1);
+                Thread.Sleep(1);
             }
             DispatchAction(session, new Action(
                 new ActionSequence { Id = "flush", Type = "key" },
                 new ActionItem { Type = "pause", Value = null }
             )).GetAwaiter().GetResult();
             // Flush the system input by waiting briefly.
-            System.Threading.Thread.Sleep(1);
+            Thread.Sleep(1);
         }
 
         /// <summary>
@@ -419,7 +423,7 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             //Keyboard.Press(virtualKey);
-                            if (!PressWithTimeoutAsync(virtualKey).GetAwaiter().GetResult()) {
+                            if (!await PressWithTimeoutAsync(virtualKey)) {
                                 break;
                             }
 
@@ -452,7 +456,7 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             //Keyboard.Release(virtualKey);
-                            if (!ReleaseWithTimeoutAsync(virtualKey).GetAwaiter().GetResult()) {
+                            if (!await ReleaseWithTimeoutAsync(virtualKey)) {
                                 break;
                             }
 

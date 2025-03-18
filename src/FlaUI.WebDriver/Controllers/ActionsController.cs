@@ -23,7 +23,7 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpPost]
-        public ActionResult PerformActions([FromRoute] string sessionId, [FromBody] ActionsRequest actionsRequest)
+        public async Task<ActionResult> PerformActions([FromRoute] string sessionId, [FromBody] ActionsRequest actionsRequest)
         {
             _logger.LogDebug("Performing actions for session {SessionId}", sessionId);
             var session = GetSession(sessionId);
@@ -40,7 +40,7 @@ namespace FlaUI.WebDriver.Controllers
                     {
                         throw new InvalidOperationException("Input source is not a valid KeyInputSource.");
                     }
-                    _actionsDispatcher.DispatchActionsForStringSync(session, actionSequence.Id, keySource, fullText);
+                    await _actionsDispatcher.DispatchActionsForString(session, actionSequence.Id, keySource, fullText);
                 }
                 else
                 {
@@ -54,7 +54,7 @@ namespace FlaUI.WebDriver.Controllers
                         {
                             dispatchTickActionTasks = dispatchTickActionTasks.Concat(new[] { Task.Delay(tickDuration) });
                         }
-                        Task.WhenAll(dispatchTickActionTasks).GetAwaiter().GetResult();
+                        await Task.WhenAll(dispatchTickActionTasks);
                     }
                 }
             }
@@ -70,7 +70,7 @@ namespace FlaUI.WebDriver.Controllers
                     {
                         dispatchTickActionTasks = dispatchTickActionTasks.Concat(new[] { Task.Delay(tickDuration) });
                     }
-                    Task.WhenAll(dispatchTickActionTasks).GetAwaiter().GetResult();
+                    await Task.WhenAll(dispatchTickActionTasks);
                 }
             }
             _logger.LogDebug("Performed actions for session {SessionId}", sessionId);
@@ -78,14 +78,14 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpDelete]
-        public ActionResult ReleaseActions([FromRoute] string sessionId)
+        public async Task<ActionResult> ReleaseActions([FromRoute] string sessionId)
         {
             _logger.LogDebug("Releasing actions for session {SessionId}", sessionId);
             var session = GetSession(sessionId);
             // Dispatch every remaining cancel (keyUp) action for keys still pressed.
             foreach (var cancelAction in session.InputState.InputCancelList.ToList())
             {
-                _actionsDispatcher.DispatchAction(session, cancelAction).GetAwaiter().GetResult();
+                await _actionsDispatcher.DispatchAction(session, cancelAction);
             }
             session.InputState.Reset();
             _logger.LogDebug("Released actions for session {SessionId}", sessionId);

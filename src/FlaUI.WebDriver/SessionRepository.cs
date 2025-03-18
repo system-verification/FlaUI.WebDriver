@@ -1,28 +1,24 @@
-﻿namespace FlaUI.WebDriver
+﻿using System.Collections.Concurrent;
+
+namespace FlaUI.WebDriver
 {
     public class SessionRepository : ISessionRepository
     {
+        // Thread-safe session storage
+        private readonly ConcurrentDictionary<string, Session> _sessions 
+            = new ConcurrentDictionary<string, Session>();
+
         private List<Session> Sessions { get; } = new List<Session>();
 
         public Session? FindById(string sessionId)
         {
-            return Sessions.SingleOrDefault(session => session.SessionId == sessionId);
+            _sessions.TryGetValue(sessionId, out var session);
+            return session;
         }
-
-        public void Add(Session session)
-        {
-            Sessions.Add(session);
-        }
-
-        public void Delete(Session session)
-        {
-            Sessions.Remove(session);
-        }
-
-        public List<Session> FindTimedOut()
-        {
-            return Sessions.Where(session => session.IsTimedOut).ToList();
-        }
+        public void Add(Session session) => _sessions[session.SessionId] = session;
+        public void Delete(Session session) => _sessions.TryRemove(session.SessionId, out _);
+        public List<Session> FindTimedOut() =>
+            _sessions.Values.Where(s => s.IsTimedOut).ToList();
 
         public List<Session> FindAll()
         {

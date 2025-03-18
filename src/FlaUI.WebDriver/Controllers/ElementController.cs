@@ -184,7 +184,7 @@ namespace FlaUI.WebDriver.Controllers
         }
 
         [HttpPost("{elementId}/value")]
-        public ActionResult ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
+        public async Task<ActionResult> ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
         {
             _logger.LogDebug("Element sending keys for session {SessionId} and element {ElementId}", sessionId, elementId);
             var session = GetActiveSession(sessionId);
@@ -195,7 +195,7 @@ namespace FlaUI.WebDriver.Controllers
             if (element.Properties.IsOffscreen.IsSupported)
             {
                 // Synchronously wait for the element to be onscreen.
-                if (!Wait.Until(() => !element.IsOffscreen, session.ImplicitWaitTimeout).GetAwaiter().GetResult())
+                if (!await Wait.Until(() => !element.IsOffscreen, session.ImplicitWaitTimeout))
                 {
                     return ElementNotInteractable(elementId);
                 }
@@ -212,7 +212,7 @@ namespace FlaUI.WebDriver.Controllers
             try
             {
                 // Use the synchronous dispatch for full key sequence.
-                _actionsDispatcher.DispatchActionsForStringSync(session, inputId, source, elementSendKeysRequest.Text);
+                await _actionsDispatcher.DispatchActionsForString(session, inputId, source, elementSendKeysRequest.Text);
             }
             finally
             {

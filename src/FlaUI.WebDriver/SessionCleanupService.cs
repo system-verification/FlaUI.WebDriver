@@ -56,10 +56,17 @@ namespace FlaUI.WebDriver
             {
                 _logger.LogInformation("Session cleanup service cleaning up {Count} sessions that did not receive commands in their specified new command timeout interval", timedOutSessions.Count);
 
+                // Prevented Removal of Active Sessions: To further guard against the race between session cleanup and in-flight commands, 
+                // the cleanup service now double-checks a session’s timeout status inside the removal loop. 
+                // If a session was marked for removal but received a new command just in time (resetting its timeout), 
+                // the cleanup thread will skip disposing it. 
                 foreach (Session session in timedOutSessions)
                 {
-                    sessionRepository.Delete(session);
-                    session.Dispose();
+                    if (session.IsTimedOut)
+                    {
+                        sessionRepository.Delete(session);
+                        session.Dispose();
+                    }
                 }
             }
             else
