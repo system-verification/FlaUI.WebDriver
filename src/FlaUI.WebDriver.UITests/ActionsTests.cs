@@ -11,39 +11,22 @@ namespace FlaUI.WebDriver.UITests
     public class ActionsTests
     {
         private RemoteWebDriver _driver;
-        private string _keyboardLayout;
 
         [SetUp]
         public void LocalSetup()
         {
-            _keyboardLayout = KeyboardLayoutHelper.GetCurrentKeyboardLayout();
             var driverOptions = FlaUIDriverOptions.TestApp();
-            var commandTimeout = System.TimeSpan.FromSeconds(60);
+            var commandTimeout = System.TimeSpan.FromSeconds(10);
             _driver = new RemoteWebDriver(WebDriverFixture.WebDriverUrl, driverOptions.ToCapabilities(), commandTimeout);
-            var kName = KeyboardLayoutHelper.GetKeyboardLayoutName(_keyboardLayout);
-            return;
         }
 
         [TearDown]
         public void Teardown()
         {
             KeyboardHelper.ResetKeyboardState();
-            //KeyboardLayoutHelper.SwitchToKeyboardLayout(_keyboardLayout);
 
             _driver?.ResetInputState();
-            _driver?.Dispose();
-            System.Threading.Thread.Sleep(3000);
-        }
-
-        // Data source for available keyboard layouts
-        public static IEnumerable<(string,string)> LoadedKeyboardLayouts => KeyboardLayoutHelper.GetLoadedKeyboardLayouts();
-
-        public static IEnumerable<TestCaseData> LoadedKeyboardLayouts2()
-        {
-            foreach (var layout in KeyboardLayoutHelper.GetLoadedKeyboardLayouts())
-            {
-                yield return new TestCaseData(layout.Item1, layout.Item2).SetName(layout.Item2);
-            }
+            _driver?.Quit();
         }
 
         [Test]
@@ -105,11 +88,9 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
-        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
-        public void SendKeys_ShiftedCharacters1_IsSupported((string id, string name) layout)
+        [Test]
+        public void SendKeys_ShiftedCharacters1_IsSupported()
         {
-            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
-
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
@@ -122,13 +103,12 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
-        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
-        public void SendKeys_UnicodeCharacters1_IsSupported((string id, string name) layout)
+        [Test]
+        public void SendKeys_UnicodeCharacters1_IsSupported()
         {
-            if (layout.name != "Swedish") {
-                Assert.Ignore("Skipping test beacuse it is only for a Swedish keyboard");
+            if (KeyboardLayoutHelper.GetKeyboardLayoutName(KeyboardLayoutHelper.GetCurrentKeyboardLayout()) != "Swedish") {
+                Assert.Ignore("Skipping beacuse it is only for a Swedish keyboard");
             }
-            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
 
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
@@ -157,11 +137,9 @@ namespace FlaUI.WebDriver.UITests
             }, System.TimeSpan.FromSeconds(2));
         }
 
-        [TestCaseSource(nameof(LoadedKeyboardLayouts))]
-        public void SendKeys_ShiftCharacters3_IsSupported((string id, string name) layout)
+        [Test]
+        public void SendKeys_ShiftCharacters3_IsSupported()
         {
-            KeyboardLayoutHelper.SwitchToKeyboardLayout(layout.id);
-
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 

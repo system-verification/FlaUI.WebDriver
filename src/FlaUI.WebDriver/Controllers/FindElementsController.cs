@@ -26,6 +26,7 @@ namespace FlaUI.WebDriver.Controllers
         [HttpPost("element")]
         public async Task<ActionResult> FindElement([FromRoute] string sessionId, [FromBody] FindElementRequest findElementRequest)
         {
+            _logger.LogDebug("Find Element for session {SessionId}", sessionId);
             var session = GetActiveSession(sessionId);
             return await FindElementFrom(() => session.App == null ? session.Automation.GetDesktop() : session.CurrentWindow, findElementRequest, session);
         }
@@ -72,6 +73,7 @@ namespace FlaUI.WebDriver.Controllers
             }
 
             var knownElement = session.GetOrAddKnownElement(element);
+            _logger.LogDebug("Found Element {ElementId}", knownElement.ElementRuntimeId);
             return await Task.FromResult(WebDriverResult.Success(new FindElementResponse
             {
                 ElementReference = knownElement.ElementReference,

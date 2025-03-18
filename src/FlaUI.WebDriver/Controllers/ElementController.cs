@@ -186,9 +186,7 @@ namespace FlaUI.WebDriver.Controllers
         [HttpPost("{elementId}/value")]
         public ActionResult ElementSendKeys([FromRoute] string sessionId, [FromRoute] string elementId, [FromBody] ElementSendKeysRequest elementSendKeysRequest)
         {
-            _logger.LogDebug("Element send keys for session {SessionId} and element {ElementId}", sessionId, elementId);
-            KeyboardLayoutManager.SetupKeyboardLayout();
-
+            _logger.LogDebug("Element sending keys for session {SessionId} and element {ElementId}", sessionId, elementId);
             var session = GetActiveSession(sessionId);
             var element = GetElement(session, elementId);
 
@@ -221,6 +219,7 @@ namespace FlaUI.WebDriver.Controllers
                 inputState.RemoveInputSource(inputId);
             }
 
+            _logger.LogDebug("Element completed send keys for session {SessionId} and element {ElementId}", sessionId, elementId);
             return WebDriverResult.Success();
         }
 

@@ -23,7 +23,6 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 
 
 builder.Services.AddSingleton<ISessionRepository, SessionRepository>();
-builder.Services.AddScoped<KeyboardLayoutManager>();
 builder.Services.AddScoped<IActionsDispatcher, ActionsDispatcher>();
 builder.Services.AddScoped<IWindowsExtensionService, WindowsExtensionService>();
 builder.Services.AddScoped<IConditionParser, ConditionParser>();

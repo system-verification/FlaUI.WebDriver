@@ -26,7 +26,6 @@ namespace FlaUI.WebDriver.Controllers
         public ActionResult PerformActions([FromRoute] string sessionId, [FromBody] ActionsRequest actionsRequest)
         {
             _logger.LogDebug("Performing actions for session {SessionId}", sessionId);
-            KeyboardLayoutManager.SetupKeyboardLayout();
             var session = GetSession(sessionId);
 
             if (actionsRequest.Actions.Count == 1 && actionsRequest.Actions[0].Type == "key")
@@ -74,6 +73,7 @@ namespace FlaUI.WebDriver.Controllers
                     Task.WhenAll(dispatchTickActionTasks).GetAwaiter().GetResult();
                 }
             }
+            _logger.LogDebug("Performed actions for session {SessionId}", sessionId);
             return WebDriverResult.Success();
         }
 
