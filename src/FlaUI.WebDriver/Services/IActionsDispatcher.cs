@@ -6,5 +6,6 @@ namespace FlaUI.WebDriver.Services
         Task DispatchAction(Session session, Action action);
         void DispatchActionsForStringSync(Session session, string inputId, KeyInputSource source, string text);
         Task DispatchActionsForString(Session session, string inputId, KeyInputSource source, string text);
+        Task DispatchActionsForStringWithFlaUICore(Session session, string inputId, KeyInputSource source, string text);
     }
 }

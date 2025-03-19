@@ -22,7 +22,6 @@ namespace FlaUI.WebDriver.Services
 
         /// <summary>
         /// Public method to process a single action.
-        /// This method acquires the semaphore so it is not reentrant.
         /// </summary>
         public async Task DispatchAction(Session session, Action action)
         {
@@ -103,8 +102,31 @@ namespace FlaUI.WebDriver.Services
             // Queue any remaining modifier release actions.
             actionsToProcess.AddRange(BuildModifierReleaseActions(session, inputId));
 
-            // Process actions sequentially (each call to DispatchAction obtains the semaphore).
             await ProcessActionsQueue(session, actionsToProcess);
+        }
+
+        private async Task<bool> KeyboardTypeWithTimeout(string text, int timeoutMilliseconds = 50)
+        {
+            var typeTask = Task.Run(() => Keyboard.Type(text));
+            var delayTask = Task.Delay(timeoutMilliseconds);
+            var completedTask = await Task.WhenAny(typeTask, delayTask);
+            if (completedTask == typeTask)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public async Task DispatchActionsForStringWithFlaUICore(Session session, string inputId, KeyInputSource source, string text)
+        {
+            if (!await KeyboardTypeWithTimeout(text)) {
+                _logger.LogDebug("Keyboard typing error for {text}", text);
+                throw WebDriverResponseException.KeyboardError($"Keyboard typing error for {text}");
+            }
+            await Task.Delay(50);
         }
 
         public void DispatchActionsForStringSync(Session session, string inputId, KeyInputSource source, string text)

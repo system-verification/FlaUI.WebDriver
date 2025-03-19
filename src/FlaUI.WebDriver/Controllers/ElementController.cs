@@ -210,7 +210,8 @@ namespace FlaUI.WebDriver.Controllers
             inputState.AddInputSource(inputId, source);
             try
             {
-                await _actionsDispatcher.DispatchActionsForString(session, inputId, source, elementSendKeysRequest.Text);
+                //await _actionsDispatcher.DispatchActionsForString(session, inputId, source, elementSendKeysRequest.Text);
+                await _actionsDispatcher.DispatchActionsForStringWithFlaUICore(session, inputId, source, elementSendKeysRequest.Text);
             }
             finally
             {
