@@ -374,20 +374,11 @@ namespace FlaUI.WebDriver.Services
             var completedTask = await Task.WhenAny(pressTask, delayTask);
             if (completedTask == pressTask)
             {
-                try
-                {
-                    await pressTask; // observe any exceptions
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Keyboard.Press threw an exception for virtual key {VirtualKey}", virtualKey);
-                    return false;
-                }
+                return true;
             }
             else
             {
-                _logger.LogDebug("PressWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
+                _logger.LogWarning("PressWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
                 return false;
             }
         }
@@ -399,20 +390,11 @@ namespace FlaUI.WebDriver.Services
             var completedTask = await Task.WhenAny(releaseTask, delayTask);
             if (completedTask == releaseTask)
             {
-                try
-                {
-                    await releaseTask;
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Keyboard.Release threw an exception for virtual key {VirtualKey}", virtualKey);
-                    return false;
-                }
+                return true;
             }
             else
             {
-                _logger.LogDebug("ReleaseWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
+                _logger.LogWarning("ReleaseWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
                 return false;
             }
         }
