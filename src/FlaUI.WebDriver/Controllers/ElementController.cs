@@ -194,7 +194,6 @@ namespace FlaUI.WebDriver.Controllers
 
             if (element.Properties.IsOffscreen.IsSupported)
             {
-                // Synchronously wait for the element to be onscreen.
                 if (!await Wait.Until(() => !element.IsOffscreen, session.ImplicitWaitTimeout))
                 {
                     return ElementNotInteractable(elementId);
@@ -211,7 +210,6 @@ namespace FlaUI.WebDriver.Controllers
             inputState.AddInputSource(inputId, source);
             try
             {
-                // Use the synchronous dispatch for full key sequence.
                 await _actionsDispatcher.DispatchActionsForString(session, inputId, source, elementSendKeysRequest.Text);
             }
             finally

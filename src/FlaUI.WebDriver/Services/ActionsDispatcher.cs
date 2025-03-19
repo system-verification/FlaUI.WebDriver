@@ -167,20 +167,20 @@ namespace FlaUI.WebDriver.Services
         /// </summary>
         private async Task ProcessActionsQueue(Session session, List<Action> actions)
         {
-            _logger.LogDebug("Async Processing {ActionCount} queued actions", actions.Count);
+            _logger.LogDebug("Async dispatching {ActionCount} queued keayboard actions", actions.Count);
             foreach (var act in actions)
             {
                 await DispatchAction(session, act);
                 // Flush the system input by waiting briefly.
-                await Task.Delay(1); //Thread.Sleep(1);
+                await Task.Delay(20); //Thread.Sleep(1);
             }
-            _logger.LogDebug("Dispatching final pause action to flush pending input events.");
             await DispatchAction(session, new Action(
                     new ActionSequence { Id = "flush", Type = "key" },
                     new ActionItem { Type = "pause", Value = null }
                 ));
             // Flush the system input by waiting briefly.
-            await Task.Delay(1); //Thread.Sleep(1);
+            await Task.Delay(20); //Thread.Sleep(1);
+            _logger.LogDebug("Dispatched all keyboard actions.");
         }
 
         /// <summary>
@@ -367,28 +367,52 @@ namespace FlaUI.WebDriver.Services
                 throw WebDriverResponseException.InvalidArgument($"Null action subtype {action.SubType} unknown");
         }
 
-        private async Task<bool> PressWithTimeoutAsync(VirtualKeyShort virtualKey, int timeoutMilliseconds = 1000)
+        private async Task<bool> PressWithTimeout(VirtualKeyShort virtualKey, int timeoutMilliseconds = 50)
         {
             var pressTask = Task.Run(() => Keyboard.Press(virtualKey));
-            if (await Task.WhenAny(pressTask, Task.Delay(timeoutMilliseconds)) == pressTask)
+            var delayTask = Task.Delay(timeoutMilliseconds);
+            var completedTask = await Task.WhenAny(pressTask, delayTask);
+            if (completedTask == pressTask)
             {
-                return true;
+                try
+                {
+                    await pressTask; // observe any exceptions
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Keyboard.Press threw an exception for virtual key {VirtualKey}", virtualKey);
+                    return false;
+                }
             }
             else
             {
+                _logger.LogDebug("PressWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
                 return false;
             }
         }
 
-        private async Task<bool> ReleaseWithTimeoutAsync(VirtualKeyShort virtualKey, int timeoutMilliseconds = 1000)
+        private async Task<bool> ReleaseWithTimeout(VirtualKeyShort virtualKey, int timeoutMilliseconds = 50)
         {
             var releaseTask = Task.Run(() => Keyboard.Release(virtualKey));
-            if (await Task.WhenAny(releaseTask, Task.Delay(timeoutMilliseconds)) == releaseTask)
+            var delayTask = Task.Delay(timeoutMilliseconds);
+            var completedTask = await Task.WhenAny(releaseTask, delayTask);
+            if (completedTask == releaseTask)
             {
-                return true;
+                try
+                {
+                    await releaseTask;
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Keyboard.Release threw an exception for virtual key {VirtualKey}", virtualKey);
+                    return false;
+                }
             }
             else
             {
+                _logger.LogDebug("ReleaseWithTimeout operation timed out for virtual key {VirtualKey}", virtualKey);
                 return false;
             }
         }
@@ -423,8 +447,9 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             //Keyboard.Press(virtualKey);
-                            if (!await PressWithTimeoutAsync(virtualKey)) {
-                                break;
+                            if (!await PressWithTimeout(virtualKey)) {
+                                _logger.LogDebug("Keyboard action error for {KeyValue}", action.Value);
+                                throw WebDriverResponseException.KeyboardError($"Key action error for {action.Value}");
                             }
 
                             // Create and record the matching keyUp action for the cancel action feature
@@ -456,8 +481,9 @@ namespace FlaUI.WebDriver.Services
                         else
                         {
                             //Keyboard.Release(virtualKey);
-                            if (!await ReleaseWithTimeoutAsync(virtualKey)) {
-                                break;
+                            if (!await ReleaseWithTimeout(virtualKey)) {
+                                _logger.LogDebug("Keyboard action error for {KeyValue}", action.Value);
+                                throw WebDriverResponseException.KeyboardError($"Key action error for {action.Value}");
                             }
 
                             // Remove the matching cancel action.

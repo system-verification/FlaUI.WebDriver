@@ -35,12 +35,13 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("abc123");
+            var testValue = "abc123";
+            element.SendKeys(testValue);
 
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("abc123"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
             }, System.TimeSpan.FromSeconds(2));
         }
 
@@ -50,12 +51,45 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("aBC123");
+            var testValue = "aBC123";
+            element.SendKeys(testValue);
 
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("aBC123"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
+            }, System.TimeSpan.FromSeconds(2));
+        }
+
+        [Test]
+        public void SendKeys_Default22_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            var testValue = "a1";
+            element.SendKeys(testValue);
+
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
+            }, System.TimeSpan.FromSeconds(2));
+        }
+
+        [Test]
+        public void SendKeys_Default222_IsSupported()
+        {
+            var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+            element.Clear();
+
+            var testValue = "a2";
+            element.SendKeys(testValue);
+
+            KeyboardHelper.Retry(() =>
+            {
+                var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
             }, System.TimeSpan.FromSeconds(2));
         }
 
@@ -65,11 +99,12 @@ namespace FlaUI.WebDriver.UITests
             var element = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
             element.Clear();
 
-            element.SendKeys("aAb1B cC3 eE8");
+            var testValue = "aAb1B cC3 eE8";
+            element.SendKeys(testValue);
             KeyboardHelper.Retry(() =>
             {
                 var refreshedElement = _driver.FindElement(ExtendedBy.AccessibilityId("TextBox"));
-                Assert.That(refreshedElement.Text, Is.EqualTo("aAb1B cC3 eE8"));
+                Assert.That(refreshedElement.Text, Is.EqualTo(testValue));
             }, System.TimeSpan.FromSeconds(2));
         }
 

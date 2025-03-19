@@ -13,6 +13,8 @@
 
         public static WebDriverResponseException UnknownError(string message) => new WebDriverResponseException(message, "unknown error", 500);
 
+        public static WebDriverResponseException KeyboardError(string message) => new WebDriverResponseException(message, "keyboard action error", 500);
+
         public static WebDriverResponseException UnsupportedOperation(string message) => new WebDriverResponseException(message, "unsupported operation", 500);
 
         public static WebDriverResponseException InvalidArgument(string message) => new WebDriverResponseException(message, "invalid argument", 400);
